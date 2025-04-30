@@ -1,5 +1,6 @@
 from Data_Generator import generate_temporal_graph_dataset
-from Model import TGCN_Autoencoder, prepare_wrapped_model, show_model_summary
+from Model import TGCN_Autoencoder
+from model_summary import prepare_wrapped_model, show_model_summary
 import torch
 from torchinfo import summary
 from train import train_model
@@ -11,13 +12,13 @@ from parafac_fun import parafac_gen, parafac_gen_list
 nNodes = 5
 Time = 10
 Features = 1
-Rank = 1
+Rank = 3
 
 # Generate and save dataset, watch node 0 and node 4
 dataset = generate_temporal_graph_dataset(
     nNodes=nNodes,
     Time=Time,
-    Features=1,
+    Features=Features,
     num_blocks=2,
     num_samples=1,
     high_prob=0.9,
@@ -68,8 +69,6 @@ C_true = torch.randn(Time, Rank, dtype=torch.float)
 input_tensor = torch.randn(nNodes, Time, Features, dtype=torch.float)
 
 A_true, B_true, C_true = parafac_gen(adj_list_full, Rank)
-
-print(A_true.shape)
 
 #### ==== 4. train and test the data
 

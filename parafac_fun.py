@@ -1,4 +1,4 @@
-
+import torch
 import tensorly as tl
 import tensorly.decomposition as decom
 from tensorly.cp_tensor import cp_to_tensor
@@ -11,8 +11,13 @@ def parafac_gen(adj_tensor, Rank):
     weights, factors = decom.parafac(adj_tensor, rank=Rank)
 
     # Extract the factor matrices (A, B, C) and append to the factors_list
-    A, B, C = factors[0], factors[1], factors[2]
+    A, B, C = factors[1], factors[2], factors[3]
     # factors_list.append([A, B, C])
+    print(factors)
+
+    A = torch.from_numpy(A)
+    B = torch.from_numpy(B)
+    C = torch.from_numpy(C)
 
     return A, B, C
 
@@ -31,5 +36,6 @@ def parafac_gen_list(adj_tensor_list, Rank):
         A, B, C = factors[0], factors[1], factors[2]
         # A, B, C = A.reshape(40, 1), B.reshape(40, 1), C.reshape(40, 1)
         factors_list.append([A, B, C])
+
 
     return factors_list

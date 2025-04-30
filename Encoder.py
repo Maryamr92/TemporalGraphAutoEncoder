@@ -44,6 +44,7 @@ class TEncoder(nn.Module):
             P3 = torch.mm(self.W3, H_i) @ self.V3  # (m3_out, Time)
 
             for r in range(Rank):
+
                 part1 = P1 @ A[:, r].unsqueeze(1)  # (m1_out, 1)
                 part2 = P2 @ B[:, r].unsqueeze(1)  # (m2_out, 1)
                 part3 = P3 @ C[:, r].unsqueeze(1)  # (m3_out, 1)

@@ -1,9 +1,23 @@
-# utils.py
 
 import torch
-from ModelWrapper import ModelWrapper
+import torch.nn as nn
+from torchinfo import summary
 
-def prepare_wrapped_model(model, input_dim, nnodes, Time, Rank, device="cpu"):
+# ----------------- Wrapper for Model to Fix Extra Inputs -----------------
+class ModelWrapper(nn.Module):
+    def __init__(self, model, A, B, C, Rank):
+        super(ModelWrapper, self).__init__()
+        self.model = model
+        self.A = A
+        self.B = B
+        self.C = C
+        self.Rank = Rank
+
+    def forward(self, x):
+        return self.model(x, self.A, self.B, self.C, self.Rank)
+
+# ----------------- Utility Function: Prepare Wrapped Model -----------------
+def prepare_wrapped_model(model, nNodes, Time, Rank, device="cpu"):
     """
     Prepare a wrapped model for summary() or evaluation.
 
@@ -19,15 +33,35 @@ def prepare_wrapped_model(model, input_dim, nnodes, Time, Rank, device="cpu"):
         wrapped_model (nn.Module): Model wrapped to accept only (input) for forward().
         input_tensor (torch.Tensor): Dummy input tensor matching input size.
     """
-    input_shape = (nnodes, Time, input_dim)  # (n, T, F)
 
     # Create dummy inputs
-    input_tensor = torch.randn(input_shape).to(device)
-    A = torch.rand(nNodes, Rank).to(device)
-    B = torch.rand(nNodes, Rank).to(device)
-    C = torch.rand(Time, Rank).to(device)
+
+    A = torch.rand(nNodes, Rank)
+    B = torch.rand(nNodes, Rank)
+    C = torch.rand(Time, Rank)
 
     # Wrap the model
-    wrapped_model = ModelWrapper(model, A, B, C, Rank).to(device)
+    wrapped_model = ModelWrapper(model, A, B, C, Rank)
 
-    return wrapped_model, input_tensor
+    return wrapped_model
+
+
+# ----------------- Utility Function: Show Model Summary -----------------
+def show_model_summary(wrapped_model, nNodes, Time, Features):
+    """
+    Display a nice summary of the model.
+
+    Args:
+        wrapped_model (nn.Module): Wrapped model ready for summary.
+        input_tensor (torch.Tensor): Dummy input.
+    """
+    input_shape= (nNodes, Time, Features)
+    input_tensor = torch.randn(input_shape)
+
+    summary(
+        wrapped_model,
+        input_size=input_tensor.shape,
+        verbose=1,
+        col_names=["input_size", "output_size", "num_params", "trainable"],
+    )
+
