@@ -2,46 +2,39 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import Encoder
-import Decoder
+from Encoder import TEncoder
+from Decoder import TDecoder
 
 
-
+# -------------------- Full TGCN Model (Encoder + Decoder) --------------------
 class TGCN_Autoencoder(nn.Module):
     def __init__(self, input_X, layer_dims, nNodes, Time, Rank, dropout=0.0):
-        """
-        Args:
-            layer_dims (list): List of dimensions, e.g., [input_dim, hidden1, hidden2, ..., output_dim]
-            nNodes (int): Number of nodes
-            Time (int): Number of time steps
-            Rank (int): Rank for decomposition
-            dropout (float): Dropout probability
-        """
+
         super(TGCN_Autoencoder, self).__init__()
 
         self.layers = nn.ModuleList()
         self.dropout = dropout
-        self.n_layers = len(layer_dims)   # Number of Encoder layers
+        self.n_layers = len(layer_dims)  # Number of Encoder layers
 
         # Build Encoder layers dynamically
         for i in range(self.n_layers):
             self.layers.append(
-                Encoder.TEncoder(
-                    M_in= input_X if i == 0 else layer_dims[i-1],
+                TEncoder(
+                    M_in=input_X if i == 0 else layer_dims[i - 1],
                     M_out=layer_dims[i],
                     nNodes=nNodes,
                     Time=Time,
                     Rank=Rank
                 )
             )
+        # print(f"input_X, {input_X[2]}")
 
         # Decoder input comes from the last encoder output
-        self.decoder = Decoder.TDecoder(
-            input_shape=layer_dims[-1],
+        self.decoder = TDecoder(
+            input_shape=(layer_dims[-1][0]+layer_dims[-1][1]+layer_dims[-1][2], Rank, input_X[2]),
             nNodes=nNodes,
             Time=Time,
-            Rank=Rank
-        )
+            Rank=Rank)
 
     def forward(self, input, A, B, C, Rank):
         x = input
@@ -54,7 +47,6 @@ class TGCN_Autoencoder(nn.Module):
             if self.dropout > 0:
                 x = F.dropout(x, p=self.dropout, training=self.training)
 
-        # Decode
         A_hat, B_hat, C_hat = self.decoder(x)
 
         return [A_hat, B_hat, C_hat]

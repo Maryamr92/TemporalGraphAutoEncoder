@@ -77,7 +77,7 @@ train_losses, val_losses, grad_history, A_hat, B_hat, C_hat = train_model(
     input_tensor=input_tensor,
     A=A_true, B=B_true, C=C_true,
     Rank=Rank,
-    epochs=200,
+    epochs=300,
     learning_rate=5e-3,
     patience=10,
     verbose=True,

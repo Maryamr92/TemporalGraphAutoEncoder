@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-
 # -------------------- Decoder Layer --------------------
 class TDecoder(nn.Module):
     def __init__(self, input_shape, nNodes, Time, Rank):
@@ -24,6 +23,9 @@ class TDecoder(nn.Module):
 
         self.reset_parameters()
 
+        # print(f"theta1, {self.theta1}")
+        # print(f"input_shape, {input_shape}")
+
     def reset_parameters(self):
         for param in [self.theta1, self.theta2, self.theta3, self.alpha1, self.alpha2, self.alpha3]:
             stdv = 1. / (param.size(1) ** 0.5)
@@ -35,9 +37,17 @@ class TDecoder(nn.Module):
         B_hat = torch.zeros(self.rank, self.nodes, device=Z.device)
         C_hat = torch.zeros(self.rank, self.Time, device=Z.device)
 
+        # print(f"Z_shape, {Z.shape}")
+        # print(f"self.m3_shape, {self.m3}")
+
+        if Z.dim() == 2:
+            Z = Z.unsqueeze(-1)  # Add third dimension → (B, F, 1)
+
         # Apply projection to recover factor matrices
         for j in range(self.m3):
             Z_j = Z[:, :, j]
+
+            # ZZ_T = Z_j @ Z_j.T
 
             A_ = self.theta1 @ Z_j @ self.alpha1
             B_ = self.theta2 @ Z_j @ self.alpha2

@@ -22,7 +22,7 @@ def train_model(
         input_tensor,
         A, B, C,
         Rank,
-        epochs=500,
+        epochs=200,
         learning_rate=1e-3,
         patience=15,
         min_delta=1e-4,
@@ -36,10 +36,11 @@ def train_model(
     criterion = nn.MSELoss()
 
     # Reset model weights like you're wiping a whiteboard
-    if hasattr(model, 'encoder') and isinstance(model.encoder, nn.ModuleList):
-        for layer in model.encoder:
+    if hasattr(model, 'layers') and isinstance(model.layers, nn.ModuleList):
+        for layer in model.layers:
             if hasattr(layer, 'reset_parameters'):
                 layer.reset_parameters()
+
     if hasattr(model, 'decoder') and hasattr(model.decoder, 'reset_parameters'):
         model.decoder.reset_parameters()
 
@@ -50,6 +51,8 @@ def train_model(
     best_val_loss = float("inf")
     epochs_no_improve = 0
     best_model_state = None
+
+
 
     for epoch in range(epochs):
         model.train()
