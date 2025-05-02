@@ -90,7 +90,7 @@ plot_training_curves(train_losses, val_losses, log_axis='False')
 
 print(f'norm(A_hat - A_true), {torch.norm(A_hat - A_true)}')
 print(f'norm(B_hat - B_true), {torch.norm(B_hat - B_true)}')
-print(f'norm(A_hat - A_true), {torch.norm(C_hat - C_true)}')
+print(f'norm(C_hat - C_true), {torch.norm(C_hat - C_true)}')
 
 
 
