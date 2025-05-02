@@ -32,7 +32,7 @@ dataset = generate_temporal_graph_dataset(
 #### ==== 2. Making the model
 
 # Example of layer dimensions: input_dim=10, hidden layers, final output_dim=5
-layer_dims = [(2,2,2)]  # input -> hidden1 -> hidden2 -> hidden3 -> hidden4 -> output
+layer_dims = [(3,2,2)]  # input -> hidden1 -> hidden2 -> hidden3 -> hidden4 -> output
 input_shape= (nNodes, Time, Features)
 # Create model
 model = TGCN_Autoencoder(
@@ -88,9 +88,9 @@ train_losses, val_losses, grad_history, A_hat, B_hat, C_hat = train_model(
 
 plot_training_curves(train_losses, val_losses, log_axis='False')
 
-print(torch.norm(A_hat - A_true))
-print(torch.norm(B_hat - B_true))
-print(torch.norm(C_hat - C_true))
+print(f'norm(A_hat - A_true), {torch.norm(A_hat - A_true)}')
+print(f'norm(B_hat - B_true), {torch.norm(B_hat - B_true)}')
+print(f'norm(A_hat - A_true), {torch.norm(C_hat - C_true)}')
 
 
 
