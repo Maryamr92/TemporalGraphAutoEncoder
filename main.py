@@ -14,6 +14,8 @@ Time = 20
 Features = 1
 Rank = 6
 stochastic_data = True
+save_path = f"temporal_graph_dataset_{Features}-{nNodes}-{Time}_.pt"
+
 
 # Generate and save dataset, watch node 0 and node 4
 dataset = generate_temporal_graph_dataset(
@@ -24,7 +26,7 @@ dataset = generate_temporal_graph_dataset(
     num_samples=1,
     high_prob=0.9,
     low_prob=0.05,
-    save_path="temporal_graph_dataset1_5_10_1.pt",
+    save_path=save_path,
     visualize=False,
     node_i= 0,   # Choose a node within num of node set
     node_j= 4    # Choose a node within num of node set
@@ -63,7 +65,7 @@ show_model_summary(wrapped_model, nNodes=nNodes, Time=Time, Features=Features)
 if stochastic_data:
 
     # Load your saved tensors
-    loaded_data = torch.load("temporal_graph_dataset1_5_10_1.pt")
+    loaded_data = torch.load(save_path)
     adj_list_full = loaded_data["adj"]
     input_tensor = loaded_data["feat"]
     input_tensor = input_tensor[0]
