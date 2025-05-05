@@ -9,10 +9,11 @@ from parafac_fun import parafac_gen, parafac_gen_list
 
 ### ==== 1. preparing dataset
 
-nNodes = 5
-Time = 10
+nNodes = 10
+Time = 20
 Features = 1
-Rank = 3
+Rank = 6
+stochastic_data = True
 
 # Generate and save dataset, watch node 0 and node 4
 dataset = generate_temporal_graph_dataset(
@@ -32,7 +33,7 @@ dataset = generate_temporal_graph_dataset(
 #### ==== 2. Making the model
 
 # Example of layer dimensions: input_dim=10, hidden layers, final output_dim=5
-layer_dims = [(3,2,2)]  # input -> hidden1 -> hidden2 -> hidden3 -> hidden4 -> output
+layer_dims = [(2,2,2)]  # input -> hidden1 -> hidden2 -> hidden3 -> hidden4 -> output
 input_shape= (nNodes, Time, Features)
 # Create model
 model = TGCN_Autoencoder(
@@ -57,18 +58,24 @@ show_model_summary(wrapped_model, nNodes=nNodes, Time=Time, Features=Features)
 
 #### ==== 3. preparing the data
 
-# Load your saved tensors
-loaded_data = torch.load("temporal_graph_dataset1_5_10_1.pt")
-adj_list_full = loaded_data["adj"]
-feat_list_full = loaded_data["feat"]
+# choose the dataset:
 
-# Define A, B, and C
-A_true = torch.randn(nNodes, Rank, dtype=torch.float)
-B_true = torch.randn(nNodes, Rank, dtype=torch.float)
-C_true = torch.randn(Time, Rank, dtype=torch.float)
-input_tensor = torch.randn(nNodes, Time, Features, dtype=torch.float)
+if stochastic_data:
 
-A_true, B_true, C_true = parafac_gen(adj_list_full, Rank)
+    # Load your saved tensors
+    loaded_data = torch.load("temporal_graph_dataset1_5_10_1.pt")
+    adj_list_full = loaded_data["adj"]
+    input_tensor = loaded_data["feat"]
+    input_tensor = input_tensor[0]
+
+    A_true, B_true, C_true = parafac_gen(adj_list_full, Rank)
+
+else:
+    # Define A, B, and C
+    A_true = torch.randn(nNodes, Rank, dtype=torch.float)
+    B_true = torch.randn(nNodes, Rank, dtype=torch.float)
+    C_true = torch.randn(Time, Rank, dtype=torch.float)
+    input_tensor = torch.randn(nNodes, Time, Features, dtype=torch.float)
 
 #### ==== 4. train and test the data
 
@@ -93,5 +100,7 @@ print(f'norm(B_hat - B_true), {torch.norm(B_hat - B_true)}')
 print(f'norm(C_hat - C_true), {torch.norm(C_hat - C_true)}')
 
 
-
+print(A_true, A_hat)
+print(B_true, B_hat)
+print(C_true, C_hat)
 

@@ -13,7 +13,7 @@ def parafac_gen(adj_tensor, Rank):
     # Extract the factor matrices (A, B, C) and append to the factors_list
     A, B, C = factors[1], factors[2], factors[3]
     # factors_list.append([A, B, C])
-    print(factors)
+    # print(factors)
 
     A = torch.from_numpy(A)
     B = torch.from_numpy(B)

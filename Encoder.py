@@ -38,6 +38,8 @@ class TEncoder(nn.Module):
         PB_list = []
         PC_list = []
 
+        # input = torch.tensor(input)
+
         for i in range(self.m3_in):
 
             # print(f"self.m3_in, {self.m3_in}")
