@@ -53,7 +53,6 @@ def train_model(
     best_model_state = None
 
 
-
     for epoch in range(epochs):
         model.train()
         optimizer.zero_grad()
