@@ -1,0 +1,151 @@
+### ___________
+# Results:
+---------------------------------
+num_blocks=2,
+num_comm=2,
+num_samples=200,
+high_prob=0.9,
+low_prob=0.05,
+
+batch_size= int(len(adj_list_train)),
+epochs=1000,
+learning_rate=5*1e-3,
+
+nNodes = 10
+Time = 20
+Features = 1
+encoder_space = (2, 2, 2)
+
+
+Rank 1:
+Avg Training Loss: 0.002727980027
+Avg Validation Loss: 0.002416526899
+
+Rank 2:
+Avg Training Loss: 0.006668498274
+Avg Validation Loss: 0.013157104142
+
+Rank 3:
+Avg Training Loss: 0.063315823674
+Avg Validation Loss: 0.064358651638
+
+Rank 4:
+Avg Training Loss: 0.088024124503
+Avg Validation Loss: 0.089529938996
+
+Rank 5:
+Avg Training Loss: 0.104437842965
+Avg Validation Loss: 0.101024992764
+
+Rank 6:
+Avg Training Loss: 0.116017304361
+Avg Validation Loss: 0.117542602122
+
+* in general, C norm has less error than A and B
+-----------------------------------------------------------------------------------------
+nNodes = 20
+Time = 40
+Features = 1
+encoder_space = (3, 2, 2)   --(2,2,2) did not work
+
+Rank 1:
+Avg Training Loss: 0.00025856102
+Avg Validation Loss: 0.000252913218
+
+Rank 2:
+Avg Training Loss: 0.000618808495
+Avg Validation Loss: 0.000846820243
+
+Rank 3:
+Avg Training Loss: 0.028798406944
+Avg Validation Loss: 0.030252287164
+
+Rank 4:
+Avg Training Loss: 0.042622540146
+Avg Validation Loss: 0.043901234865
+
+Rank 5:
+Avg Training Loss: 0.053528033197
+Avg Validation Loss: 0.055546827614
+
+Rank 6:
+Avg Training Loss: 0.057751279324
+Avg Validation Loss: 0.060371432453
+
+* in general, C norm has less error than A and B  (almost half)
+-----------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------
+
+num_blocks=2,
+num_comm=2,
+num_samples=200,
+high_prob=0.8,
+low_prob=0.1,
+
+batch_size= int(len(adj_list_train)),
+epochs=1000,
+learning_rate=5*1e-3,
+
+nNodes = 10
+Time = 20
+Features = 1
+encoder_space = (2, 2, 2)
+
+Rank 1:
+Avg Training Loss: 0.005643955898
+Avg Validation Loss: 0.005212887656
+
+Rank 2:
+Avg Training Loss: 0.026982340962
+Avg Validation Loss: 0.027079235762
+
+Rank 3:
+Avg Training Loss: 0.072576902807
+Avg Validation Loss: 0.079639457166
+
+Rank 4:
+Avg Training Loss: 0.113850176334   **
+Avg Validation Loss: 0.114429228008
+
+Rank 5:
+Avg Training Loss: 0.115799774528
+Avg Validation Loss: 0.115967420697
+
+Rank 6:
+Avg Training Loss: 0.125944897532
+Avg Validation Loss: 0.128754258156
+
+--------------------------------------------------------------------
+nNodes = 20
+Time = 40
+Features = 1
+encoder_space = (2, 2, 2)
+
+Rank 1:
+vg Training Loss: 0.000496088061
+Avg Validation Loss: 0.000454276626
+
+Rank 2:
+Avg Training Loss: 0.002022779547
+Avg Validation Loss: 0.002791645704
+
+Rank 3:
+Avg Training Loss: 0.033058419824
+Avg Validation Loss: 0.040406212211
+
+Rank 4:
+Avg Training Loss: 0.046729870141
+Avg Validation Loss: 0.047363329679
+
+Rank 5:
+Avg Training Loss: 0.055713184178
+Avg Validation Loss: 0.058922331780
+
+Rank 6:
+Avg Training Loss: 0.063978597522
+Avg Validation Loss: 0.063986755908
+...
+Rank 20:
+Avg Training Loss: 0.092269621789
+Validation Loss: 0.092325568199
+

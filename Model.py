@@ -36,6 +36,13 @@ class TGCN_Autoencoder(nn.Module):
             Time=Time,
             Rank=Rank)
 
+    def reset(self):
+        for layer in self.layers:
+            if hasattr(layer, 'reset_parameters'):
+                layer.reset_parameters()
+        if hasattr(self.decoder, 'reset_parameters'):
+            self.decoder.reset_parameters()
+
     def forward(self, input, A, B, C, Rank):
         x = input
 
