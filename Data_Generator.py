@@ -10,15 +10,16 @@ def generate_temporal_graph_dataset(
         nNodes=5,
         Time=10,
         Features=1,
-        num_blocks=2,
+        num_cycle=2,
         num_comm=2,
         num_samples=1,
-        high_prob=0.8,
+        high_prob=0.9,
         low_prob=0.1,
         save_path="temporal_graph_dataset_samples.pt",
         visualize=False,
         node_i=0,
-        node_j=1
+        node_j=1,
+        num_snapshots = 4
 ):
     """
     Generate synthetic temporal graph dataset with node features and save it.
@@ -110,48 +111,54 @@ def generate_temporal_graph_dataset(
 
     # Optionally visualize
     if visualize and num_samples > 0:
-        _visualize_temporal_graph(all_adj_tensors[0], Time, node_i, node_j, num_blocks)
+        _visualize_temporal_graph(all_adj_tensors[0], Time, node_i, node_j, num_snapshots)
 
     return dataset
 
 
-def _visualize_temporal_graph(A_tensor, Time, node_i, node_j, num_blocks):
+def _visualize_temporal_graph(A_tensor, Time, node_i, node_j, num_snapshots):
     """
-    Internal helper to visualize temporal graphs and a specific edge over time.
+    Visualize specific time points of a temporal adjacency tensor and edge time series.
 
     Args:
-        A_tensor (torch.Tensor): Adjacency tensor (n, n, T)
-        T (int): Number of time steps
-        node_i (int): First node to track
-        node_j (int): Second node to track
+        A_tensor (torch.Tensor): Adjacency tensor of shape (n, n, T)
+        Time (int): Total number of time steps
+        node_i (int): Source node index
+        node_j (int): Target node index
+        selected_t (list[int], optional): List of time indices to visualize. If None, show all.
     """
-    fig, axes = plt.subplots(1, Time, figsize=(Time * 3, 3))
+    # Default to first 4 time steps
 
-    for t in range(int(Time)):
-        adj_matrix = A_tensor[:, :, t].numpy()
+
+    selected_t = np.linspace(0, Time - 1, num_snapshots, dtype=int).tolist()  # e.g., [0, 6, 13, 19] for T=20
+
+    fig, axes = plt.subplots(1, len(selected_t), figsize=(len(selected_t) * 3, 3))
+
+    if len(selected_t) == 1:
+        axes = [axes]
+
+    for idx, t in enumerate(selected_t):
+        adj_matrix = A_tensor[:, :, t].detach().cpu().numpy()
         G = nx.from_numpy_array(adj_matrix)
 
-        pos = nx.spring_layout(G, seed=42)  # Consistent layout across time
-        ax = axes[t]
+        pos = nx.spring_layout(G, seed=42)  # Fixed layout for consistency
+        ax = axes[idx]
 
         nx.draw(G, pos, ax=ax, node_size=300, with_labels=True,
                 labels={i: str(i) for i in G.nodes}, font_size=10)
-
         ax.set_title(f'Time {t}')
 
     plt.tight_layout()
 
-    # Visualize edge presence over time between selected nodes
-    edge_timeseries = A_tensor[node_i, node_j, :].numpy()
-
+    # Plot edge time series for full timeline
+    edge_timeseries = A_tensor[node_i, node_j, :].detach().cpu().numpy()
     plt.figure(figsize=(8, 4))
     plt.plot(range(Time), edge_timeseries, marker='o', linestyle='-')
     plt.title(f'Edge presence between node {node_i} and node {node_j} over time')
     plt.xlabel('Time step')
     plt.xticks(range(Time))
-    plt.ylabel('Edge (1 = exists, 0 = not)')
-    plt.ylim(-0.1, 1.1)
+    plt.ylabel('Edge weight')
+    plt.ylim(edge_timeseries.min() - 0.1, edge_timeseries.max() + 0.1)
     plt.grid(True)
     plt.show()
-
 

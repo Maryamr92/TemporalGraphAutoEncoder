@@ -28,9 +28,15 @@ class TEncoder(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        for param in [self.W1, self.V1, self.W2, self.V2, self.W3, self.V3]:
-            stdv = 1. / (param.size(1) ** 0.5)
-            param.data.uniform_(-stdv, stdv)
+        # for param in [self.W1, self.V1, self.W2, self.V2, self.W3, self.V3]:
+        #     stdv = 1. / (param.size(1) ** 0.5)
+        #     param.data.uniform_(-stdv, stdv)
+        for param in self.parameters():
+            if param.dim() > 1:
+                nn.init.xavier_uniform_(param)
+            else:
+                stdv = 1. / (param.size(0) ** 0.5)
+                param.data.uniform_(-stdv, stdv)
 
     def forward(self, input, A, B, C, Rank):
 
@@ -42,19 +48,31 @@ class TEncoder(nn.Module):
 
         for i in range(self.m3_in):
 
-            # print(f"self.m3_in, {self.m3_in}")
+            # print(f"self.W1, {self.W1.shape}")
+
+            # print(f"self.V1 , {self.V1.shape}")
+
 
             H_i = input[:, :, i]  # (m1, m2)
-            P1 = torch.mm(self.W1, H_i) @ self.V1  # (m1_out, nodes)
-            P2 = torch.mm(self.W2, H_i) @ self.V2  # (m2_out, nodes)
-            P3 = torch.mm(self.W3, H_i) @ self.V3  # (m3_out, Time)
+
+            # print(f"H_i, {H_i.shape}")
+            P1 = self.W1 @ H_i   # (m1_out, nodes)
+            P2 = self.W2 @ H_i   # (m2_out, nodes)
+            P3 = self.W3 @ H_i   # (m3_out, Time)
+
+            P1 = P1 @ self.V1  # (m1_out, nodes)
+            P2 = P2 @ self.V2  # (m2_out, nodes)
+            P3 = P3 @ self.V3  # (m3_out, Time)
+
+            # print(f"P1, {P1.shape}")
+
 
             P1_list = []
             P2_list = []
             P3_list = []
 
             for r in range(Rank):
-                part1 = P1 @ A[:, r].unsqueeze(1)  # (m1_out, 1)
+                part1 = P1 @ A[:, r].unsqueeze(1)  # (m1_out, 1)     ()
                 part2 = P2 @ B[:, r].unsqueeze(1)  # (m2_out, 1)
                 part3 = P3 @ C[:, r].unsqueeze(1)  # (m3_out, 1)
 

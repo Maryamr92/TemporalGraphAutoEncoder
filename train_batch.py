@@ -37,14 +37,7 @@ def train_model(
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     criterion = nn.MSELoss()
 
-    # Reset model weights like you're wiping a whiteboard
-    if hasattr(model, 'layers') and isinstance(model.layers, nn.ModuleList):
-        for layer in model.layers:
-            if hasattr(layer, 'reset_parameters'):
-                layer.reset_parameters()
-
-    if hasattr(model, 'decoder') and hasattr(model.decoder, 'reset_parameters'):
-        model.decoder.reset_parameters()
+    model.reset()
 
     # Track the journey
     grad_history = []
@@ -117,6 +110,10 @@ def train_model(
 
                 val_loss += (loss_A_val + loss_B_val + loss_C_val) / len(adj_list_val)
 
+                # print(f'norm(A_hat - A_true), {torch.norm(A_hat_val - A_true_val)}')
+                # print(f'norm(B_hat - B_true), {torch.norm(B_hat_val - B_true_val)}')
+                # print(f'norm(C_hat - C_true), {torch.norm(C_hat_val - C_true_val)}')
+
                 # epoch_val_loss += batch_loss.item()
 
         # avg_val_loss = epoch_val_loss / (len(adj_list_val) / batch_size_val)
@@ -144,6 +141,10 @@ def train_model(
     print(f'norm(A_hat - A_true), {torch.norm(A_hat_val - A_true_val)}')
     print(f'norm(B_hat - B_true), {torch.norm(B_hat_val - B_true_val)}')
     print(f'norm(C_hat - C_true), {torch.norm(C_hat_val - C_true_val)}')
+
+    print(A_hat_val, A_true_val)
+    print(B_hat_val, B_true_val)
+    print(C_hat_val, C_true_val)
 
     return train_losses, val_losses, grad_history
 

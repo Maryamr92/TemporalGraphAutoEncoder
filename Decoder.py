@@ -27,9 +27,15 @@ class TDecoder(nn.Module):
         # print(f"input_shape, {input_shape}")
 
     def reset_parameters(self):
-        for param in [self.theta1, self.theta2, self.theta3, self.alpha1, self.alpha2, self.alpha3]:
-            stdv = 1. / (param.size(1) ** 0.5)
-            param.data.uniform_(-stdv, stdv)
+        for param in self.parameters():
+            if param.dim() > 1:
+                nn.init.xavier_uniform_(param)
+            else:
+                stdv = 1. / (param.size(0) ** 0.5)
+                param.data.uniform_(-stdv, stdv)
+            # stdv = 1. / (param.size(1) ** 0.5)
+            # param.data.uniform_(-stdv, stdv)
+
 
     def forward(self, Z):
 
@@ -48,10 +54,17 @@ class TDecoder(nn.Module):
             Z_j = Z[:, :, j]
 
             # ZZ_T = Z_j @ Z_j.T
+            # print(f"Z_j, {Z_j.shape}")
+            # print(f"self.theta1, {self.theta1.shape}")
+            # print(f"self.alpha1, {self.alpha1.shape}")
 
-            A_ = self.theta1 @ Z_j @ self.alpha1
-            B_ = self.theta2 @ Z_j @ self.alpha2
-            C_ = self.theta3 @ Z_j @ self.alpha3
+            A_ = self.theta1 @ Z_j
+            B_ = self.theta2 @ Z_j
+            C_ = self.theta3 @ Z_j
+
+            A_ = A_.T @ self.alpha1
+            B_ = B_.T @ self.alpha2
+            C_ = C_.T @ self.alpha3
 
             A_hat += A_
             B_hat += B_

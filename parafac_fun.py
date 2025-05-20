@@ -42,19 +42,19 @@ def parafac_gen(adj_tensor, Rank):
     list_errors = []
     adj_tensor_np = tl.to_numpy(adj_tensor)
 
-    for r in range(1, Rank + 1):
-        partial_weights = sorted_weights[:r]
-        partial_factors = [f[:, :r] for f in (A, B, C)]
-        reconstructed = cp_to_tensor((partial_weights, partial_factors))
-
-        print(f"partial_weights, {partial_weights}")
-
-        error = np.linalg.norm(adj_tensor_np - reconstructed)
-        list_errors.append(error)
+    # for r in range(1, Rank + 1):
+    #     partial_weights = sorted_weights[:r]
+    #     partial_factors = [f[:, :r] for f in (A, B, C)]
+    #     reconstructed = cp_to_tensor((partial_weights, partial_factors))
+    #
+    #     print(f"partial_weights, {partial_weights}")
+    #
+    #     error = np.linalg.norm(adj_tensor_np - reconstructed)
+    #     list_errors.append(error)
 
     # print(f"Original tensor slice: {adj_tensor_np[:5, :3, 0]}")
     # print(f"Reconstructed tensor (rank {Rank}): {reconstructed[:5, :3, 0]}")
-    print(f"Reconstruction errors for ranks 1 to {Rank}: {list_errors}")
+    # print(f"Reconstruction errors for ranks 1 to {Rank}: {list_errors}")
 
     # input('---')
 
@@ -76,11 +76,20 @@ def parafac_gen_list(adj_tensor_list, Rank):
         adj_tensor = tl.tensor(adj_tensor)
 
         # Decompose the tensor into factors A, B, C
-        weights, factors = decom.parafac(adj_tensor, rank=Rank, normalize_factors=True)
-        print(f"weights, {weights}")
+        # Decompose the adjacency tensor into factors A, B, C
+        weights, factors = decom.parafac(adj_tensor, rank=Rank, normalize_factors=True,
+                                         n_iter_max=100,  # you can set this higher for better convergence
+                                         tol=1e-6,  # stopping threshold
+                                         init='svd',  # or 'random'
+                                         verbose=0
+                                         )
+
+        sorted_indices = np.argsort(-weights)  # Negative sign for descending order
+        sorted_weights = weights[sorted_indices]
+        sorted_factors = [factor[:, sorted_indices] for factor in factors]
 
         # Extract the factor matrices (A, B, C) and append to the factors_list
-        A, B, C = factors[0], factors[1], factors[2]
+        A, B, C = sorted_factors[0], sorted_factors[1], sorted_factors[2]
 
         A = torch.from_numpy(A)
         B = torch.from_numpy(B)
