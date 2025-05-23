@@ -4,6 +4,8 @@ import numpy as np
 import torch
 import networkx as nx
 import matplotlib.pyplot as plt
+import math
+from itertools import product
 
 
 def generate_temporal_graph_dataset(
@@ -43,8 +45,8 @@ def generate_temporal_graph_dataset(
     """
 
     # Assert T is divisible by num_blocks
-    assert Time % num_blocks == 0, "T must be evenly divisible by num_blocks"
-    block_size = Time // num_blocks
+    assert Time % num_cycle == 0, "T must be evenly divisible by num_blocks"
+    block_size = Time // num_cycle
 
     # Divide nodes into two groups
     # num_comm = 1
@@ -54,11 +56,11 @@ def generate_temporal_graph_dataset(
     # Assign nodes to communities
     node_communities = np.array([i * num_comm // nNodes for i in range(nNodes)])
 
-    P = np.zeros((num_comm, num_comm, num_blocks))
+    P = np.zeros((num_comm, num_comm, num_cycle))
 
     for a in range(num_comm):
         for b in range(num_comm):
-            for t_block in range(num_blocks):
+            for t_block in range(num_cycle):
                 if a == b:
                     # Intra-group interaction probabilities
                     prob = high_prob if t_block % 2 == 0 else low_prob
@@ -162,3 +164,23 @@ def _visualize_temporal_graph(A_tensor, Time, node_i, node_j, num_snapshots):
     plt.grid(True)
     plt.show()
 
+
+def split_sum_into_3d(num_units):
+    if num_units < 3:
+        raise ValueError("Cannot split values less than 3 into 3 positive parts")
+
+    # Start by dividing equally
+    base = num_units // 3
+    remainder = num_units % 3
+
+    # Distribute the remainder to keep values close
+    parts = [base] * 3
+    for i in range(remainder):
+        parts[i] += 1
+
+    return tuple(sorted(parts))
+
+#
+# units = 16
+# shape = split_sum_into_3d(units)
+# print(f"A balanced 3D shape for {units} is: {shape}")
