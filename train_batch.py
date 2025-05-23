@@ -142,10 +142,53 @@ def train_model(
     print(f'norm(B_hat - B_true), {torch.norm(B_hat_val - B_true_val)}')
     print(f'norm(C_hat - C_true), {torch.norm(C_hat_val - C_true_val)}')
 
-    print(A_hat_val, A_true_val)
-    print(B_hat_val, B_true_val)
-    print(C_hat_val, C_true_val)
+    # print(A_hat_val, A_true_val)
+    # print(B_hat_val, B_true_val)
+    # print(C_hat_val, C_true_val)
 
     return train_losses, val_losses, grad_history
 
 
+def evaluate_model(model, input_tensor_list, adj_list_paraf, Rank, verbose=False):
+    """
+    Evaluate a trained TGCN model on given inputs.
+
+    Args:
+        model (nn.Module): Trained TGCN_Autoencoder model
+        input_tensor (torch.Tensor): Input data for evaluation
+        A_true, B_true, C_true (torch.Tensor): Ground-truth factor matrices
+        Rank (int): Rank used in tensor decomposition
+        verbose (bool): Whether to print evaluation metrics
+
+    Returns:
+        Tuple: (A_pred, B_pred, C_pred, loss_dict)
+    """
+    model.eval()
+    criterion = nn.MSELoss()
+    with torch.no_grad():
+        total_loss = 0.0
+
+        for i in range(len(adj_list_paraf)):
+            input_tensor = input_tensor_list[i]
+
+            A_true, B_true, C_true = adj_list_paraf[i]
+            A_pred, B_pred, C_pred = model(input_tensor, A_true, B_true, C_true, Rank)
+
+            loss_A = criterion(A_pred, A_true)
+            loss_B = criterion(B_pred, B_true)
+            loss_C = criterion(C_pred, C_true)
+
+            total_loss += (loss_A + loss_B + loss_C) / len(adj_list_paraf)
+
+        if verbose:
+            print("=== Evaluation Results ===")
+            print(f"MSE Loss A: {loss_A:.6f}")
+            print(f"MSE Loss B: {loss_B:.6f}")
+            print(f"MSE Loss C: {loss_C:.6f}")
+            print(f"Total Loss: {total_loss:.6f}")
+
+            print(f"\nNorm(A_error): {torch.norm(A_pred - A_true):.6f}")
+            print(f"Norm(B_error): {torch.norm(B_pred - B_true):.6f}")
+            print(f"Norm(C_error): {torch.norm(C_pred - C_true):.6f}")
+
+    return total_loss
