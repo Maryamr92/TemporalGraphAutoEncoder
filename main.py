@@ -15,7 +15,12 @@ nNodes = 20
 Time = 12
 Features = 1
 Rank = 3
+# ======== if stochastics_data:
 stochastic_data = True
+num_comm = 2
+num_cycle = 2
+
+
 save_path = f"Generated_Data/temporal_graph_dataset_{Features}-{nNodes}-{Time}_.pt"
 save_path_abnormal = f"Generated_Data/temporal_graph_dataset_abnormal_{Features}-{nNodes}-{Time}_.pt"
 ### Generate and save dataset, watch node 0 and node 4
@@ -23,13 +28,13 @@ dataset = generate_temporal_graph_dataset(
     nNodes=nNodes,
     Time=Time,
     Features=Features,
-    num_cycle=3,
-    num_comm=2,
+    num_cycle=num_cycle,
+    num_comm=num_comm,
     num_samples=200,
     high_prob=0.2,
     low_prob=0.03,
     save_path=save_path,
-    visualize=True,
+    visualize=False,
     node_i= 0,   # Choose a node within num of node set
     node_j= 2,    # Choose a node within num of node set
     num_snapshots = Time
@@ -39,7 +44,7 @@ print(f"Dataset saved as {save_path}")
 #### ==== 2. Making the model
 
 # Example of layer dimensions: input_dim=10, hidden layers, final output_dim=5
-layer_dims = [(2,2,2)]  # input -> hidden1 -> hidden2 -> hidden3 -> hidden4 -> output
+layer_dims = [6, 8]  # input -> hidden1 -> hidden2 -> hidden3 -> hidden4 -> output
 input_shape= (nNodes, Time, Features)
 # Create model
 model = TGCN_Autoencoder(
@@ -72,15 +77,15 @@ if stochastic_data:
     loaded_data = torch.load(save_path)
     adj_list_full = loaded_data["adj"]
     feat_list_full = loaded_data["feat"]
-    # ---- for 1 sample ----- #####
-    # input_tensor = feat_list_full[0]
-    # A_true, B_true, C_true = parafac_gen(adj_list_full[0], Rank)
+    ### ---- for 1 sample ----- #####
+    input_tensor = feat_list_full[0]
+    A_true, B_true, C_true = parafac_gen(adj_list_full[0], Rank)
 
-    adj_list_train, feat_list_train, adj_list_val, feat_list_val = split_dataset(
-        adj_list_full, feat_list_full, train_ratio=0.8, seed=None)
+    # adj_list_train, feat_list_train, adj_list_val, feat_list_val = split_dataset(
+    #     adj_list_full, feat_list_full, train_ratio=0.8, seed=None)
 
-    adj_list_train = parafac_gen_list(adj_list_train, Rank)
-    adj_list_val = parafac_gen_list(adj_list_val, Rank)
+    # adj_list_train = parafac_gen_list(adj_list_train, Rank)
+    # adj_list_val = parafac_gen_list(adj_list_val, Rank)
 
 else:
     # Define A, B, and C
@@ -91,36 +96,36 @@ else:
 
 ### ==== 4. train and test the data
 
-# train_losses, val_losses, grad_history, A_hat, B_hat, C_hat = train_model(
-#     model=model,
-#     input_tensor=input_tensor,
-#     A=A_true, B=B_true, C=C_true,
-#     Rank=Rank,
-#     epochs=1000,
-#     learning_rate=5e-3,
-#     patience=10,
-#     verbose=True,
-#     use_early_stopping=False
-# )
+train_losses, val_losses, grad_history, A_hat, B_hat, C_hat = train_model(
+    model=model,
+    input_tensor=input_tensor,
+    A=A_true, B=B_true, C=C_true,
+    Rank=Rank,
+    epochs=1000,
+    learning_rate=5e-3,
+    patience=10,
+    verbose=True,
+    use_early_stopping=False
+)
 
 
 ### ==== 4. train and test the data
 
-train_losses, val_losses, grad_history =  train_model_batch(
-        model = model,
-        adj_list_train = adj_list_train,
-        feat_list_train = feat_list_train,
-        adj_list_val =  adj_list_val,
-        feat_list_val = feat_list_val,
-        Rank = Rank,
-        batch_size= int(len(adj_list_train)),
-        # batch_size= 32,
-        epochs=1000,
-        learning_rate=5*1e-3,
-        patience=15,
-        min_delta=1e-4,
-        verbose=True,
-        use_early_stopping=False)
+# train_losses, val_losses, grad_history =  train_model_batch(
+#         model = model,
+#         adj_list_train = adj_list_train,
+#         feat_list_train = feat_list_train,
+#         adj_list_val =  adj_list_val,
+#         feat_list_val = feat_list_val,
+#         Rank = Rank,
+#         batch_size= int(len(adj_list_train)),
+#         # batch_size= 32,
+#         epochs=1000,
+#         learning_rate=5*1e-3,
+#         patience=15,
+#         min_delta=1e-4,
+#         verbose=True,
+#         use_early_stopping=False)
 
 #### ==== 5. Visualization
 
@@ -138,8 +143,8 @@ abnormal_data = generate_temporal_graph_dataset(
     nNodes=nNodes,
     Time=Time,
     Features=Features,
-    num_cycle=2,
-    num_comm=2,
+    num_cycle=num_cycle,
+    num_comm=num_comm,
     num_samples=1,
     high_prob=0.03,
     low_prob=0.2,
