@@ -10,6 +10,7 @@ from visulisation import plot_training_curves
 from parafac_fun import parafac_gen, parafac_gen_list
 from preparing_data import split_dataset
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 # ### ==== 1. preparing dataset
@@ -177,6 +178,25 @@ def main(var):
 
     ### ==== 1. preparing dataset
 
+    nNodes = var
+
+    epochs = 500
+    learning_rate = 5e-3
+
+    # nNodes = 20
+    Time = 12
+    Features = 1
+    Rank = 2
+
+    high_prob = 0.2
+    low_prob = 0.03
+    num_comm = 2
+    num_cycle = 2
+    num_samples = 100
+    layer_dims = [6]  # input -> hidden1 -> hidden2 -> hidden3 -> hidden4 -> output
+    save_path = f"Generated_Data/temporal_graph_dataset_{Features}-{nNodes}-{Time}_.pt"
+    save_path_abnormal = f"Generated_Data/temporal_graph_dataset_abnormal_{Features}-{nNodes}-{Time}_.pt"
+
 
     ### Generate and save dataset, watch node 0 and node 4
     dataset = generate_temporal_graph_dataset(
@@ -186,8 +206,8 @@ def main(var):
         num_cycle=num_cycle,
         num_comm=num_comm,
         num_samples=200,
-        high_prob=0.5,
-        low_prob=0.03,
+        high_prob=high_prob,
+        low_prob=low_prob,
         save_path=save_path,
         visualize=False,
         node_i=0,  # Choose a node within num of node set
@@ -284,8 +304,8 @@ def main(var):
         num_cycle=num_cycle,
         num_comm=num_comm,
         num_samples=num_samples//5,
-        high_prob=0.03,
-        low_prob=0.5,
+        high_prob=low_prob,
+        low_prob=high_prob,
         save_path=save_path_abnormal,
         visualize=False,
         node_i=0,  # Choose a node within num of node set
@@ -311,8 +331,8 @@ def main(var):
         num_cycle=num_cycle,
         num_comm=num_comm,
         num_samples=num_samples // 5,
-        high_prob=0.5,
-        low_prob=0.03,
+        high_prob=high_prob,
+        low_prob=low_prob,
         save_path=save_path_abnormal,
         visualize=False,
         node_i=0,  # Choose a node within num of node set
@@ -320,66 +340,72 @@ def main(var):
         num_snapshots=Time
     )
     # abnormal_data_ = torch.load(save_path_abnormal)
-    adj_list_full_mal = normal_data["adj"]
-    feat_list_full_mal = normal_data["feat"]
-    adj_list_full_mal_paraf = parafac_gen_list(adj_list_full_mal, Rank)
+    adj_list_full_bon = normal_data["adj"]
+    feat_list_full_bon = normal_data["feat"]
+    adj_list_full_bon_paraf = parafac_gen_list(adj_list_full_bon, Rank)
 
     # After training
     test_loss_bon = evaluate_model_batch(
-        model, feat_list_full_mal, adj_list_full_mal_paraf, Rank, verbose=False
+        model, feat_list_full_bon, adj_list_full_bon_paraf, Rank, verbose=False
     )
 
     return train_losses, val_losses, test_loss_mal, test_loss_bon
 
 
-epochs = 500
-learning_rate = 5e10-3
 
 
-nNodes = 20
-Time = 12
-Features = 1
-Rank = 2
-num_comm = 2
-num_cycle = 2
-num_samples = 100
-layer_dims = [6]  # input -> hidden1 -> hidden2 -> hidden3 -> hidden4 -> output
-save_path = f"Generated_Data/temporal_graph_dataset_{Features}-{nNodes}-{Time}_.pt"
-save_path_abnormal = f"Generated_Data/temporal_graph_dataset_abnormal_{Features}-{nNodes}-{Time}_.pt"
-
-node_list = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+node_list = [10, 20, 50]
 results = {}
 
 for n in node_list:
     print(f"Running for nNodes = {n}")
-    train_loss, val_loss, test_mal_loss, test_bon_loss = main(n)
-    results[n] = {"train": train_loss, "val": val_loss, 'test_mal': test_mal_loss, 'test_bon': test_bon_loss}
+    train_loss, val_loss, test_loss_mal, test_loss_bon = main(n)
+    results[n] = {"train": train_loss, "val": val_loss, 'test_mal': test_loss_mal, 'test_bon': test_loss_bon}
+
+# Set a consistent style
+plt.style.use("ggplot")
+colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red']
+
+for i, n in enumerate(node_list):
+    losses = results[n]
+    print(f'var: , {n}, {losses['test_mal']}, {losses['test_bon']}')
 
 
-
+# --- Plot Training & Validation Loss ---
 plt.figure(figsize=(10, 6))
-for n, losses in results.items():
-    plt.plot(losses["test_mal"], label=f"Train n={n}")
-    plt.plot(losses["test_bon"], linestyle='--', label=f"Val n={n}")
-plt.xlabel("Epoch")
-plt.ylabel("Loss")
-plt.title("Loss curves for varying node counts")
+for i, n in enumerate(node_list):
+    losses = results[n]
+    plt.plot(losses["train"], color=colors[i], label=f"Train (n={n})")
+    plt.plot(losses["val"], color=colors[i], linestyle='--', label=f"Val (n={n})")
+
+plt.xlabel("Epochs", fontsize=12)
+plt.ylabel("Loss", fontsize=12)
+plt.title("Training and Validation Loss Across Node Counts", fontsize=14)
 plt.legend()
-plt.grid(True)
+plt.grid(True, linestyle='--', alpha=0.6)
 plt.tight_layout()
-plt.savefig("Test_loss_mal_VS_bon.png")
+plt.savefig("Train_Val_loss_vs_nodes.png", dpi=300)
 plt.show()
 
-# Plotting results
+# --- Plot Test Loss: Malicious vs Benign ---
+mal_losses = [results[n]["test_mal"] for n in node_list]
+bon_losses = [results[n]["test_bon"] for n in node_list]
+
+# Bar chart settings
+x = np.arange(len(node_list))  # the label locations
+width = 0.35  # the width of the bars
+
+# Plot
 plt.figure(figsize=(10, 6))
-for n, losses in results.items():
-    plt.plot(losses["train"], label=f"Train n={n}")
-    plt.plot(losses["val"], linestyle='--', label=f"Val n={n}")
-plt.xlabel("Epoch")
-plt.ylabel("Loss")
-plt.title("Loss curves for varying node counts")
+plt.bar(x - width/2, mal_losses, width, label='Malicious', color='tab:red')
+plt.bar(x + width/2, bon_losses, width, label='Benign', color='tab:blue')
+
+plt.xlabel("Number of Nodes", fontsize=12)
+plt.ylabel("Loss", fontsize=12)
+plt.title("Final Test Loss: Malicious vs. Benign by Node Count", fontsize=14)
+plt.xticks(ticks=x, labels=node_list)
 plt.legend()
-plt.grid(True)
+plt.grid(True, axis='y', linestyle='--', alpha=0.6)
 plt.tight_layout()
-plt.savefig("loss_vs_nodes.png")
+plt.savefig("Final_Test_Loss_mal_vs_bon.png", dpi=300)
 plt.show()
