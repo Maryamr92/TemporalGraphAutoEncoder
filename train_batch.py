@@ -93,9 +93,10 @@ def train_model(
 
         # ====== VALIDATION PHASE ======
         model.eval()
+        val_loss = 0.0
 
         with torch.no_grad():
-            val_loss = 0.0
+
 
             for i in range(len(adj_list_val)):
                 input_tensor_val = feat_list_val[i]
@@ -165,21 +166,26 @@ def evaluate_model(model, input_tensor_list, adj_list_paraf, Rank, verbose=False
     """
     model.eval()
     criterion = nn.MSELoss()
+    total_loss = 0.0
+    # total_norm_A = 0.0
+    # total_norm_B = 0.0
+    # total_norm_C = 0.0
+    n_samples = len(adj_list_paraf)
+
     with torch.no_grad():
-        total_loss = 0.0
-
-        for i in range(len(adj_list_paraf)):
+        for i in range(n_samples):
             input_tensor = input_tensor_list[i]
-
             A_true, B_true, C_true = adj_list_paraf[i]
+
             A_pred, B_pred, C_pred = model(input_tensor, A_true, B_true, C_true, Rank)
 
             loss_A = criterion(A_pred, A_true)
             loss_B = criterion(B_pred, B_true)
             loss_C = criterion(C_pred, C_true)
 
-            total_loss += (loss_A + loss_B + loss_C) / len(adj_list_paraf)
+            total_loss += (loss_A + loss_B + loss_C).item()
 
+        avg_loss = total_loss / n_samples
         if verbose:
             print("=== Evaluation Results ===")
             print(f"MSE Loss A: {loss_A:.6f}")
@@ -191,4 +197,4 @@ def evaluate_model(model, input_tensor_list, adj_list_paraf, Rank, verbose=False
             print(f"Norm(B_error): {torch.norm(B_pred - B_true):.6f}")
             print(f"Norm(C_error): {torch.norm(C_pred - C_true):.6f}")
 
-    return total_loss
+    return avg_loss

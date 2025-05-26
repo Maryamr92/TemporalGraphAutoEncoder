@@ -174,26 +174,26 @@ import numpy as np
 
 
 
-def main(var):
+def main(var1, var2):
 
     ### ==== 1. preparing dataset
 
-    nNodes = var
+    Rank = var1
 
-    epochs = 500
-    learning_rate = 5e-3
+    epochs = 1000
+    learning_rate = 1e-3
 
-    # nNodes = 20
-    Time = 12
+    nNodes = 100
+    Time = 40
     Features = 1
-    Rank = 2
+    # Rank = 4
 
     high_prob = 0.2
     low_prob = 0.03
     num_comm = 2
-    num_cycle = 2
+    num_cycle = 4
     num_samples = 100
-    layer_dims = [6]  # input -> hidden1 -> hidden2 -> hidden3 -> hidden4 -> output
+    layer_dims = [var2]  # input -> hidden1 -> hidden2 -> hidden3 -> hidden4 -> output
     save_path = f"Generated_Data/temporal_graph_dataset_{Features}-{nNodes}-{Time}_.pt"
     save_path_abnormal = f"Generated_Data/temporal_graph_dataset_abnormal_{Features}-{nNodes}-{Time}_.pt"
 
@@ -245,9 +245,9 @@ def main(var):
     if num_samples > 1:
 
         # # Load your saved tensors
-        loaded_data = torch.load(save_path)
-        adj_list_full = loaded_data["adj"]
-        feat_list_full = loaded_data["feat"]
+        # loaded_data = torch.load(save_path)
+        adj_list_full = dataset["adj"]
+        feat_list_full = dataset["feat"]
 
         adj_list_train, feat_list_train, adj_list_val, feat_list_val = split_dataset(
             adj_list_full, feat_list_full, train_ratio=0.8, seed=None)
@@ -296,6 +296,7 @@ def main(var):
             use_early_stopping=False)
 
     ### ===== 5. Evaluation on mal data
+
 
     abnormal_data = generate_temporal_graph_dataset(
         nNodes=nNodes,
@@ -354,26 +355,34 @@ def main(var):
 
 
 
-node_list = [10, 20, 50]
+rank_list = [1, 5, 10, 20, 30, 40, 50]
+latent_space_list = 6
 results = {}
 
-for n in node_list:
+for n in rank_list:
     print(f"Running for nNodes = {n}")
-    train_loss, val_loss, test_loss_mal, test_loss_bon = main(n)
+    latent_space= 6
+    train_loss, val_loss, test_loss_mal, test_loss_bon = main(n, latent_space)
+    latent_space = latent_space + 2
     results[n] = {"train": train_loss, "val": val_loss, 'test_mal': test_loss_mal, 'test_bon': test_loss_bon}
 
 # Set a consistent style
 plt.style.use("ggplot")
-colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red']
+colors = [
+    'tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple',
+    'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan',
+    'blue', 'orange', 'green', 'red', 'purple',
+    'brown', 'pink', 'gray', 'olive', 'cyan'
+]
 
-for i, n in enumerate(node_list):
+for i, n in enumerate(rank_list):
     losses = results[n]
-    print(f'var: , {n}, {losses['test_mal']}, {losses['test_bon']}')
+    print(f'var: , {n}, mal: , {losses['test_mal']}, bon:, {losses['test_bon']}')
 
 
 # --- Plot Training & Validation Loss ---
 plt.figure(figsize=(10, 6))
-for i, n in enumerate(node_list):
+for i, n in enumerate(rank_list):
     losses = results[n]
     plt.plot(losses["train"], color=colors[i], label=f"Train (n={n})")
     plt.plot(losses["val"], color=colors[i], linestyle='--', label=f"Val (n={n})")
@@ -388,12 +397,12 @@ plt.savefig("Train_Val_loss_vs_nodes.png", dpi=300)
 plt.show()
 
 # --- Plot Test Loss: Malicious vs Benign ---
-mal_losses = [results[n]["test_mal"] for n in node_list]
-bon_losses = [results[n]["test_bon"] for n in node_list]
+mal_losses = [results[n]["test_mal"] for n in rank_list]
+bon_losses = [results[n]["test_bon"] for n in rank_list]
 
 # Bar chart settings
-x = np.arange(len(node_list))  # the label locations
-width = 0.35  # the width of the bars
+x = np.arange(len(rank_list))  # the label locations
+width = 0.25  # the width of the bars
 
 # Plot
 plt.figure(figsize=(10, 6))
@@ -403,7 +412,7 @@ plt.bar(x + width/2, bon_losses, width, label='Benign', color='tab:blue')
 plt.xlabel("Number of Nodes", fontsize=12)
 plt.ylabel("Loss", fontsize=12)
 plt.title("Final Test Loss: Malicious vs. Benign by Node Count", fontsize=14)
-plt.xticks(ticks=x, labels=node_list)
+plt.xticks(ticks=x, labels=rank_list)
 plt.legend()
 plt.grid(True, axis='y', linestyle='--', alpha=0.6)
 plt.tight_layout()
