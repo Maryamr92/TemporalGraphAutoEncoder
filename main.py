@@ -354,7 +354,7 @@ def main(var1, var2):
     return train_losses, val_losses, test_loss_mal, test_loss_bon
 
 rank_list = [1, 5, 10, 20, 80]
-latent_space_list = [[6], [8], [12], [16], [20]]
+latent_space_list = [[6], [7], [12], [16], [20]]
 results = {}
 
 for n, latent_space in zip(rank_list, latent_space_list):
