@@ -37,3 +37,69 @@ nNodes = var
 
     Figure3.png
     figure4.png
+
+=================================================
+    rank_list = [1, 5, 10, 20]
+    latent_space_list = [6, 8, 10, 12]
+
+    epochs = 1000
+    learning_rate = 1e-3
+
+    nNodes = 100
+    Time = 40
+    Features = 1
+    # Rank = 4
+
+    high_prob = 0.2
+    low_prob = 0.03
+    num_comm = 2
+    num_cycle = 4
+    num_samples = 100
+
+    Figure5.png
+    Figure6.png
+
+    =================================================
+ rank_list = [1, 5, 10, 20]
+latent_space_list = [[3], [10], [20], [40]]
+
+    epochs = 1000
+    learning_rate = 1e-3
+
+    nNodes = 100
+    Time = 40
+    Features = 1
+    # Rank = 4
+
+    high_prob = 0.2
+    low_prob = 0.03
+    num_comm = 2
+    num_cycle = 4
+    num_samples = 100
+
+    Figure7.png
+    Figure8.png
+
+ num_samples=num_samples//5,
+
+    =================================================
+
+rank_list = [1, 5, 10, 20, 80]
+latent_space_list = [[6], [10], [12], [16], [20]]
+
+    epochs = 1000
+    learning_rate = 5e-3
+
+    nNodes = 100
+    Time = 40
+    Features = 1
+    # Rank = 4
+
+    high_prob = 0.2
+    low_prob = 0.03
+    num_comm = 2
+    num_cycle = 4
+    num_samples = 1
+
+    Figure9.png
+    Figure10.png
