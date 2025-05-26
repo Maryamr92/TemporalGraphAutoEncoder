@@ -1,0 +1,39 @@
+node_list = [10, 20, 50, 100, 200, 500, 1000]
+epochs = 1000
+learning_rate = 5e-3
+
+Time = 20
+Features = 1
+Rank = 2
+
+high_prob = 0.7
+low_prob = 0.03
+num_comm = 2
+num_cycle = 2
+num_samples = 100
+layer_dims = [8]  # input -> hidden1 -> hidden2 -> hidden3 -> hidden4 -> output
+Fig1: figure1.png
+Fig2: figure2.png
+
+
+============================================
+
+nNodes = var
+
+    epochs = 1000
+    learning_rate = 1e-3
+
+    # nNodes = 20
+    Time = 40
+    Features = 1
+    Rank = 4
+
+    high_prob = 0.2
+    low_prob = 0.03
+    num_comm = 2
+    num_cycle = 4
+    num_samples = 100
+    layer_dims = [10, 6]  # input -> hidden1 -> hidden2 -> hidden3 -> hidden4 -> output
+
+    Figure3.png
+    figure4.png
