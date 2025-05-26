@@ -181,9 +181,9 @@ def main(var1, var2):
     Rank = var1
 
     epochs = 1000
-    learning_rate = 1e-3
+    learning_rate = 5e-3
 
-    nNodes = 100
+    nNodes = 20
     Time = 40
     Features = 1
     # Rank = 4
@@ -192,8 +192,8 @@ def main(var1, var2):
     low_prob = 0.03
     num_comm = 2
     num_cycle = 4
-    num_samples = 100
-    layer_dims = [var2]  # input -> hidden1 -> hidden2 -> hidden3 -> hidden4 -> output
+    num_samples = 1
+    layer_dims = var2  # input -> hidden1 -> hidden2 -> hidden3 -> hidden4 -> output
     save_path = f"Generated_Data/temporal_graph_dataset_{Features}-{nNodes}-{Time}_.pt"
     save_path_abnormal = f"Generated_Data/temporal_graph_dataset_abnormal_{Features}-{nNodes}-{Time}_.pt"
 
@@ -296,7 +296,7 @@ def main(var1, var2):
             use_early_stopping=False)
 
     ### ===== 5. Evaluation on mal data
-
+    print('abnormal test set')
 
     abnormal_data = generate_temporal_graph_dataset(
         nNodes=nNodes,
@@ -304,7 +304,7 @@ def main(var1, var2):
         Features=Features,
         num_cycle=num_cycle,
         num_comm=num_comm,
-        num_samples=num_samples//5,
+        num_samples=num_samples,
         high_prob=low_prob,
         low_prob=high_prob,
         save_path=save_path_abnormal,
@@ -320,10 +320,11 @@ def main(var1, var2):
 
     # After training
     test_loss_mal = evaluate_model_batch(
-        model, feat_list_full_mal, adj_list_full_mal_paraf, Rank, verbose=False
+        model, feat_list_full_mal, adj_list_full_mal_paraf, Rank, verbose=True
     )
 
     ### ====== 6. Evaluation on bon data
+    print('normal test set')
 
     normal_data = generate_temporal_graph_dataset(
         nNodes=nNodes,
@@ -331,7 +332,7 @@ def main(var1, var2):
         Features=Features,
         num_cycle=num_cycle,
         num_comm=num_comm,
-        num_samples=num_samples // 5,
+        num_samples=num_samples,
         high_prob=high_prob,
         low_prob=low_prob,
         save_path=save_path_abnormal,
@@ -347,25 +348,25 @@ def main(var1, var2):
 
     # After training
     test_loss_bon = evaluate_model_batch(
-        model, feat_list_full_bon, adj_list_full_bon_paraf, Rank, verbose=False
+        model, feat_list_full_bon, adj_list_full_bon_paraf, Rank, verbose=True
     )
 
     return train_losses, val_losses, test_loss_mal, test_loss_bon
 
-
-
-
-rank_list = [1, 5, 10, 20, 30, 40, 50]
-latent_space_list = 6
+rank_list = [1, 5, 10, 20, 80]
+latent_space_list = [[6], [8], [12], [16], [20]]
 results = {}
 
-for n in rank_list:
-    print(f"Running for nNodes = {n}")
-    latent_space= 6
-    train_loss, val_loss, test_loss_mal, test_loss_bon = main(n, latent_space)
-    latent_space = latent_space + 2
-    results[n] = {"train": train_loss, "val": val_loss, 'test_mal': test_loss_mal, 'test_bon': test_loss_bon}
+for n, latent_space in zip(rank_list, latent_space_list):
+    print(f"Running for Rank = {n}, latent_space = {latent_space}")
 
+    train_loss, val_loss, test_loss_mal, test_loss_bon = main(n, latent_space)
+    results[n] = {
+        "train": train_loss,
+        "val": val_loss,
+        "test_mal": test_loss_mal,
+        "test_bon": test_loss_bon
+    }
 # Set a consistent style
 plt.style.use("ggplot")
 colors = [
@@ -389,6 +390,7 @@ for i, n in enumerate(rank_list):
 
 plt.xlabel("Epochs", fontsize=12)
 plt.ylabel("Loss", fontsize=12)
+plt.yscale('log')
 plt.title("Training and Validation Loss Across Node Counts", fontsize=14)
 plt.legend()
 plt.grid(True, linestyle='--', alpha=0.6)
