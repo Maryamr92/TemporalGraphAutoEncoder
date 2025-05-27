@@ -126,6 +126,8 @@ def evaluate_model(model, input_tensor, A_true, B_true, C_true, Rank, verbose=Tr
     model.eval()
     criterion = nn.MSELoss()
 
+    # A_true, B_true, C_true = adj_list_paraf
+
     with torch.no_grad():
         A_pred, B_pred, C_pred = model(input_tensor, A_true, B_true, C_true, Rank)
 
@@ -145,9 +147,5 @@ def evaluate_model(model, input_tensor, A_true, B_true, C_true, Rank, verbose=Tr
             print(f"Norm(B_error): {torch.norm(B_pred - B_true):.6f}")
             print(f"Norm(C_error): {torch.norm(C_pred - C_true):.6f}")
 
-    return A_pred, B_pred, C_pred, {
-        'loss_A': loss_A,
-        'loss_B': loss_B,
-        'loss_C': loss_C,
-        'total_loss': total_loss
-    }
+    return total_loss, A_pred, B_pred, C_pred
+
