@@ -7,8 +7,13 @@ from tensorly.cp_tensor import cp_to_tensor
 
 
 def parafac_gen(adj_tensor, Rank):
-    adj_tensor = tl.tensor(adj_tensor)
-    adj_tensor = np.squeeze(adj_tensor)
+
+    if not tl.is_tensor(adj_tensor):
+        adj_tensor = tl.tensor(adj_tensor)
+        adj_tensor = np.squeeze(adj_tensor)
+
+    # adj_tensor = tl.tensor(adj_tensor)
+    # adj_tensor = np.squeeze(adj_tensor)
 
     # Decompose the adjacency tensor into factors A, B, C
     weights, factors = decom.parafac(adj_tensor, rank=Rank, normalize_factors=True,

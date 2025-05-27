@@ -103,3 +103,73 @@ latent_space_list = [[6], [10], [12], [16], [20]]
 
     Figure9.png
     Figure10.png
+
+    ================================
+    rank_list = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+    latent_space_list = [[16],[16],[16],[16],[16],[16],[16],[16],[16],[16]]
+
+    epochs = 1000
+    learning_rate = 5e-3
+
+    nNodes = 200
+    Time = 20
+    Features = 1
+    # Rank = 4
+
+    high_prob = 0.2
+    low_prob = 0.03
+    num_comm = 2
+    num_cycle = 2
+    num_samples = 1
+
+
+    figure 11
+    figure 12
+
+================================
+   rank_list = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+   latent_space_list = [[6],[6],[6],[6],[6],[6],[6],[6],[6],[6]]
+
+    epochs = 1000
+    learning_rate = 5e-3
+
+    nNodes = 200
+    Time = 20
+    Features = 1
+    # Rank = 4
+
+    high_prob = 0.2
+    low_prob = 0.03
+    num_comm = 2
+    num_cycle = 2
+    num_samples = 1
+
+
+    figure 13
+    figure 14
+
+================================
+    rank_list = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+    latent_space_list = [[100],[100],[100],[100],[100],[100],[100],[100],[100],[100]]
+
+    epochs = 1000
+    learning_rate = 5e-3
+
+    nNodes = 200
+    Time = 20
+    Features = 1
+    # Rank = 4
+
+    high_prob = 0.2
+    low_prob = 0.03
+    num_comm = 2
+    num_cycle = 2
+    num_samples = 1
+
+
+    figure 15
+    figure 16
+
+
+    ======================================
+
