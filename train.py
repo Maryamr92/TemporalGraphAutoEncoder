@@ -109,7 +109,7 @@ def train_model(
     return train_losses, val_losses, grad_history, A_hat, B_hat, C_hat
 
 
-def evaluate_model(model, input_tensor, A_true, B_true, C_true, Rank, verbose=True):
+def evaluate_model(model, input_tensor, A_true, B_true, C_true, Rank, verbose=False):
     """
     Evaluate a trained TGCN model on given inputs.
 
