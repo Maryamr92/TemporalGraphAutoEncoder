@@ -15,15 +15,15 @@ import numpy as np
 
 ### ==== 1. preparing dataset
 
-nNodes = 100
-Time = 60
+nNodes = 500
+Time = 200
 Features = 1
-Rank = 5
+Rank = 50
 # ======== if stochastics_data:
 
 num_comm = 2
 num_cycle = 4
-num_samples = 100
+num_samples = 500
 
 save_path = f"Generated_Data/temporal_graph_dataset_{Features}-{nNodes}-{Time}_.pt"
 save_path_abnormal = f"Generated_Data/temporal_graph_dataset_abnormal_{Features}-{nNodes}-{Time}_.pt"
@@ -48,7 +48,7 @@ print(f"Dataset saved as {save_path}")
 #### ==== 2. Making the model
 
 # Example of layer dimensions: input_dim=10, hidden layers, final output_dim=5
-layer_dims = [20, 10]  # input -> hidden1 -> hidden2 -> hidden3 -> hidden4 -> output
+layer_dims = [50, 20]  # input -> hidden1 -> hidden2 -> hidden3 -> hidden4 -> output
 input_shape= (nNodes, Time, Features)
 # Create model
 model = TGCN_Autoencoder(
@@ -131,7 +131,7 @@ else:
             batch_size= int(len(adj_list_train)/2),
             epochs=2000,
             learning_rate=5e-3,
-            patience=30,
+            patience=50,
             min_delta=1e-4,
             verbose=True,
             use_early_stopping=True)
@@ -148,48 +148,50 @@ plot_training_curves(train_losses, val_losses, log_axis='False')
 
 ### ===== 6. Evaluation
 
-abnormal_data = generate_temporal_graph_dataset(
-    nNodes=nNodes,
-    Time=Time,
-    Features=Features,
-    num_cycle=num_cycle,
-    num_comm=num_comm,
-    num_samples= num_samples/5,
-    high_prob=0.03,
-    low_prob=0.2,
-    save_path=save_path_abnormal,
-    visualize=False,
-    node_i= 0,   # Choose a node within num of node set
-    node_j= 2,    # Choose a node within num of node set
-    num_snapshots = Time
-)
+def gen_abnormal_data(num_samples):
+    abnormal_data = generate_temporal_graph_dataset(
+        nNodes=nNodes,
+        Time=Time,
+        Features=Features,
+        num_cycle=num_cycle,
+        num_comm=num_comm,
+        num_samples= num_samples,
+        high_prob=0.03,
+        low_prob=0.2,
+        save_path=save_path_abnormal,
+        visualize=False,
+        node_i= 0,   # Choose a node within num of node set
+        node_j= 2,    # Choose a node within num of node set
+        num_snapshots = Time
+    )
+    return abnormal_data
 
 print('abnormal sample --------------------------')
 # abnormal_data_ = torch.load(save_path_abnormal)
-adj_list_full_mal = abnormal_data["adj"]
-feat_list_full_mal = abnormal_data["feat"]
-
-input_tensor = feat_list_full_mal[0]
-A_true_mal, B_true_mal, C_true_mal = parafac_gen(adj_list_full_mal[0], Rank)
+# adj_list_full_mal = abnormal_data["adj"]
+# feat_list_full_mal = abnormal_data["feat"]
+#
+# input_tensor = feat_list_full_mal[0]
+# A_true_mal, B_true_mal, C_true_mal = parafac_gen(adj_list_full_mal[0], Rank)
 # After training
-total_loss, A_pred_mal, B_pred_mal, C_pred_mal = evaluate_model(
-    model, input_tensor, A_true_mal, B_true_mal, C_true_mal, Rank
-)
+# total_loss, A_pred_mal, B_pred_mal, C_pred_mal = evaluate_model(
+#     model, input_tensor, A_true_mal, B_true_mal, C_true_mal, Rank
+# )
 # abnormal_data_ = torch.load(save_path_abnormal)
-adj_list_full_mal = abnormal_data["adj"]
-feat_list_full_mal = abnormal_data["feat"]
+# adj_list_full_mal = abnormal_data["adj"]
+# feat_list_full_mal = abnormal_data["feat"]
 
-input_tensor_mal = feat_list_full_mal[0]
-A_true_mal1, B_true_mal1, C_true_mal1 = parafac_gen(adj_list_full_mal[0], Rank)
+# input_tensor_mal = feat_list_full_mal[0]
+# A_true_mal1, B_true_mal1, C_true_mal1 = parafac_gen(adj_list_full_mal[0], Rank)
 # A_true_mal = A_true_bon[torch.randperm(A_true_bon.size()[0])]
 # B_true_mal = B_true_bon[torch.randperm(B_true_bon.size()[0])]
 # C_true_mal = C_true_bon[torch.randperm(C_true_bon.size()[0])]
 
-results_normal = []
-results_abnormal = []
-results_abnormal1 = []
+results_normal = 0.0
+results_abnormal = 0.0
 
-A_true_val, B_true_val, C_true_val = adj_list_val[0]
+
+# A_true_val, B_true_val, C_true_val = adj_list_val[0]
 
 
 for n in range(len(adj_list_val)):
@@ -197,36 +199,44 @@ for n in range(len(adj_list_val)):
     total_loss_bon, A_pred_bon, B_pred_bon, C_pred_bon = evaluate_model(
         model, feat_list_val[n], A_true_val, B_true_val, C_true_val, Rank
     )
-    results_normal.append(total_loss_bon)
+    results_normal += total_loss_bon
+
+    abnormal_data = gen_abnormal_data(1)
+    adj_list_full_mal = abnormal_data["adj"]
+    feat_list_full_mal = abnormal_data["feat"]
+
+    input_tensor = feat_list_full_mal[0]
+    A_true_mal, B_true_mal, C_true_mal = parafac_gen(adj_list_full_mal[0], Rank)
 
     total_loss_mal, A_pred_mal, B_pred_mal, C_pred_mal = evaluate_model(
-        model, feat_list_val[n], A_true_mal, B_true_mal, C_true_mal, Rank
+        model, input_tensor, A_true_mal, B_true_mal, C_true_mal, Rank
     )
-    results_abnormal.append(total_loss_mal)
-
-    total_loss_mal1, A_pred_mal1, B_pred_mal1, C_pred_mal1 = evaluate_model(
-        model, input_tensor_mal, A_true_mal1, B_true_mal1, C_true_mal1, Rank
-    )
-    results_abnormal1.append(total_loss_mal1)
-
-x = np.arange(len(results_normal))
-width = 0.25
-
-plt.figure(figsize=(10, 6))
-plt.bar(x - width, results_abnormal, width, label='Malicious', color='tab:red')
-plt.bar(x, results_normal, width, label='Benign', color='tab:blue')
-plt.bar(x + width, results_abnormal1, width, label='Malicious1', color='tab:orange')
+    results_abnormal += total_loss_mal
 
 
-plt.xlabel("Run Index", fontsize=12)
-plt.ylabel("Loss", fontsize=12)
-plt.title("Final Test Loss: Malicious vs. Benign (Each Run)", fontsize=14)
-plt.xticks(ticks=x, labels=[f"Run {i}" for i in range(len(results_normal))])
-plt.legend()
-plt.grid(True, axis='y', linestyle='--', alpha=0.6)
-plt.tight_layout()
-plt.savefig("Final_Test_Loss_mal_vs_bon.png", dpi=300)
-plt.show()
+print(f'results_abnormal_avg = {results_abnormal/len(adj_list_val)}')
+print(f'results_normal_avg = {results_normal/len(adj_list_val)}')
+
+
+
+# x = np.arange(len(adj_list_val))
+# width = 0.25
+#
+# plt.figure(figsize=(10, 6))
+# plt.bar(x - width, results_abnormal, width, label='Malicious', color='tab:red')
+# # plt.bar(x, results_normal, width, label='Benign', color='tab:blue')
+# plt.bar(x + width, results_abnormal, width, label='Malicious', color='tab:blue')
+#
+#
+# plt.xlabel("Run Index", fontsize=12)
+# plt.ylabel("Loss", fontsize=12)
+# plt.title("Final Test Loss: Malicious vs. Benign (Each Run)", fontsize=14)
+# plt.xticks(ticks=x, labels=[f"Run {i}" for i in range(len(results_normal))])
+# plt.legend()
+# plt.grid(True, axis='y', linestyle='--', alpha=0.6)
+# plt.tight_layout()
+# plt.savefig("Final_Test_Loss_mal_vs_bon.png", dpi=300)
+# plt.show()
 
 
 
