@@ -6,6 +6,21 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import math
 from itertools import product
+from tensorly.contrib.sparse import tensor as sparse_tensor
+
+
+
+def dense_to_sparse_tensor(A):
+    """
+    Convert a dense 3D tensor to sparse COO format (indices, values).
+    """
+    # A = A.numpy()
+    indices = np.array(np.nonzero(A))
+    values = A[indices[0], indices[1], indices[2]]
+    shape = A.shape
+
+    return torch.tensor(indices, dtype=torch.long), torch.tensor(values, dtype=torch.float32), shape
+
 
 
 def generate_temporal_graph_dataset(
@@ -74,6 +89,7 @@ def generate_temporal_graph_dataset(
     # Initialize storage for all samples
     all_adj_tensors = []
     all_feat_tensors = []
+    sparse_adj_list = []
 
     # Generate random node features (shared across samples)
     X = torch.randn((nNodes, Time, Features))
@@ -102,9 +118,19 @@ def generate_temporal_graph_dataset(
         all_adj_tensors.append(torch.tensor(A, dtype=torch.float32))
         all_feat_tensors.append(X.clone())
     # Pack dataset
+
+        # indices, values, shape = dense_to_sparse_tensor(A)
+        # sparse_adj_list.append({
+        #     "indices": indices,
+        #     "values": values,
+        #     "shape": shape
+        # })
+
+
     dataset = {
         "adj": all_adj_tensors,  # List of adjacency tensors
         "feat": all_feat_tensors  # List of feature tensors
+        # "adj_spr": sparse_adj_list
     }
     # print(all_adj_tensors[0].shape)
 
@@ -180,7 +206,4 @@ def split_sum_into_3d(num_units):
 
     return tuple(sorted(parts))
 
-#
-# units = 16
-# shape = split_sum_into_3d(units)
-# print(f"A balanced 3D shape for {units} is: {shape}")
+

@@ -15,15 +15,15 @@ import numpy as np
 
 ### ==== 1. preparing dataset
 
-nNodes = 500
+nNodes = 300
 Time = 200
 Features = 1
-Rank = 50
+Rank = 30
 # ======== if stochastics_data:
 
 num_comm = 2
 num_cycle = 4
-num_samples = 500
+num_samples = 50
 
 save_path = f"Generated_Data/temporal_graph_dataset_{Features}-{nNodes}-{Time}_.pt"
 save_path_abnormal = f"Generated_Data/temporal_graph_dataset_abnormal_{Features}-{nNodes}-{Time}_.pt"
@@ -48,7 +48,7 @@ print(f"Dataset saved as {save_path}")
 #### ==== 2. Making the model
 
 # Example of layer dimensions: input_dim=10, hidden layers, final output_dim=5
-layer_dims = [50, 20]  # input -> hidden1 -> hidden2 -> hidden3 -> hidden4 -> output
+layer_dims = [100, 100]  # input -> hidden1 -> hidden2 -> hidden3 -> hidden4 -> output
 input_shape= (nNodes, Time, Features)
 # Create model
 model = TGCN_Autoencoder(
@@ -81,14 +81,19 @@ if num_samples > 1:
     loaded_data = torch.load(save_path)
     adj_list_full = loaded_data["adj"]
     feat_list_full = loaded_data["feat"]
+    # adj_list_full_spars = loaded_data["adj_spr"]
+
 
     adj_list_train, feat_list_train, adj_list_val, feat_list_val = split_dataset(
         adj_list_full, feat_list_full, train_ratio=0.8, seed=None)
 
-    print(f'shape adj_list_val', {adj_list_val[0].shape})
+
+    print(f'shape adj_list_val, {adj_list_val[0].shape}')
+    print(f'shape feat_list_val, {feat_list_val[0].shape}')
 
     adj_list_train = parafac_gen_list(adj_list_train, Rank)
     adj_list_val = parafac_gen_list(adj_list_val, Rank)
+
 
 else:
     ### ---- for 1 sample ----- #####
@@ -128,7 +133,7 @@ else:
             adj_list_val =  adj_list_val,
             feat_list_val = feat_list_val,
             Rank = Rank,
-            batch_size= int(len(adj_list_train)/2),
+            batch_size= 32,                #int(len(adj_list_train)/2),
             epochs=2000,
             learning_rate=5e-3,
             patience=50,

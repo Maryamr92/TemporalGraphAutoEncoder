@@ -3,6 +3,7 @@ import numpy as np
 import tensorly as tl
 import tensorly.decomposition as decom
 from tensorly.cp_tensor import cp_to_tensor
+from tensorly.contrib.sparse import tensor as sparse_tensor
 
 
 
@@ -78,7 +79,27 @@ def parafac_gen_list(adj_tensor_list, Rank):
     factors_list = []
 
     for adj_tensor in adj_tensor_list:
+
         adj_tensor = tl.tensor(adj_tensor)
+
+        # indices = adj_tensor['indices']
+        # values = adj_tensor['values']
+        # shape = adj_tensor['shape']
+        #
+        # # Convert torch tensors to numpy if needed
+        # if torch.is_tensor(indices):
+        #     indices = indices.cpu().numpy()
+        # if torch.is_tensor(values):
+        #     values = values.cpu().numpy()
+
+        # Convert to tensorly sparse tensor
+        # tl_tensor = sparse_tensor((values, indices), shape)
+
+        ## Decompose using CP/PARAFAC
+        # weights, factors = decom.parafac(tl_tensor, rank=Rank, normalize_factors=True,
+        #                                  n_iter_max=100, tol=1e-6,
+        #                                  init='svd', verbose=0)
+
 
         # Decompose the tensor into factors A, B, C
         # Decompose the adjacency tensor into factors A, B, C
