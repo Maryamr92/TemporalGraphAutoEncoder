@@ -3,125 +3,156 @@ import numpy as np
 import tensorly as tl
 import tensorly.decomposition as decom
 from tensorly.cp_tensor import cp_to_tensor
-from tensorly.contrib.sparse import tensor as sparse_tensor
+# from tensorly.contrib.sparse import tensor as sparse_tensor
+from tensorly.contrib.sparse.decomposition import parafac as sparse_parafac
+from scipy.sparse import coo_matrix
+import sparse                      # Sparse array library, NOT PyTorch
+import tensorly.contrib.sparse as stl
+# from tensorly.contrib.sparse.decomposition import parafac
 
 
-
-def parafac_gen(adj_tensor, Rank):
-
-    if not tl.is_tensor(adj_tensor):
-        adj_tensor = tl.tensor(adj_tensor)
-        adj_tensor = np.squeeze(adj_tensor)
-
-    # adj_tensor = tl.tensor(adj_tensor)
-    # adj_tensor = np.squeeze(adj_tensor)
-
-    # Decompose the adjacency tensor into factors A, B, C
-    weights, factors = decom.parafac(adj_tensor, rank=Rank, normalize_factors=True,
-                                     n_iter_max=100,  # you can set this higher for better convergence
-                                     tol=1e-6,  # stopping threshold
-                                     init='svd',  # or 'random'
-                                     verbose=0
-                                     )
-
-    # print(f"weights, {weights}")
-
-    # Extract the factor matrices (A, B, C) and append to the factors_list
-    # A, B, C = factors[0], factors[1], factors[2]
-
-    sorted_indices = np.argsort(-weights)  # Negative sign for descending order
-    sorted_weights = weights[sorted_indices]
-    sorted_factors = [factor[:, sorted_indices] for factor in factors]
-    # print(f"sorted_weights, {sorted_weights}")
-    # print(f"sorted_factors, {sorted_factors}")
-
-    A, B, C = sorted_factors[0], sorted_factors[1], sorted_factors[2]
+# tl.set_backend('numpy')  # Can be changed to 'pytorch' if needed
 
 
+### === DENSE PARAFAC === ###
+def parafac_decomposition_dense(tensor, rank, n_iter_max=100):
+    """
+    Apply dense PARAFAC decomposition to a 3D tensor.
 
-    # print(f"factors, {factors}")
+    Args:
+        tensor (np.ndarray): Input dense tensor.
+        rank (int): Number of components.
+        n_iter_max (int): Max number of iterations.
 
-    # print(f"A, {A}")
-    # print(f"B, {B}")
-    # print(f"C, {C}")
+    Returns:
+        A, B, C (torch.Tensor): Factor matrices.
+    """
+    tensor = np.squeeze(tensor)
+    tensor = tl.tensor(tensor)
 
-    list_errors = []
-    adj_tensor_np = tl.to_numpy(adj_tensor)
+    weights, factors = decom.parafac(
+        tensor,
+        rank=rank,
+        normalize_factors=True,
+        n_iter_max=n_iter_max,
+        tol=1e-6,
+        init='svd'
+    )
 
-    # for r in range(1, Rank + 1):
-    #     partial_weights = sorted_weights[:r]
-    #     partial_factors = [f[:, :r] for f in (A, B, C)]
-    #     reconstructed = cp_to_tensor((partial_weights, partial_factors))
-    #
-    #     print(f"partial_weights, {partial_weights}")
-    #
-    #     error = np.linalg.norm(adj_tensor_np - reconstructed)
-    #     list_errors.append(error)
+    # Sort by descending weights
+    sorted_idx = np.argsort(-weights)
+    sorted_factors = [f[:, sorted_idx] for f in factors]
 
-    # print(f"Original tensor slice: {adj_tensor_np[:5, :3, 0]}")
-    # print(f"Reconstructed tensor (rank {Rank}): {reconstructed[:5, :3, 0]}")
-    # print(f"Reconstruction errors for ranks 1 to {Rank}: {list_errors}")
+    A, B, C = [torch.from_numpy(f) for f in sorted_factors]
+    return A, B, C
 
-    # input('---')
 
-    # factors_list.append([A, B, C])
-    # print(f"weights, {weights}")
+def parafac_decomposition_list_dense(tensor_list, rank):
+    """
+    Apply dense PARAFAC to a list of tensors.
 
-    A = torch.from_numpy(A)
-    B = torch.from_numpy(B)
-    C = torch.from_numpy(C)
+    Args:
+        tensor_list (list of np.ndarray): List of 3D tensors.
+        rank (int): Rank of decomposition.
+
+    Returns:
+        list of [A, B, C] factors (torch.Tensors)
+    """
+
+    factors_list =[]
+
+    for tensor in tensor_list:
+
+        A, B, C = parafac_decomposition_dense(tensor, rank)
+
+        factors_list.append([A, B, C])
+
+    return factors_list
+
+
+### === SPARSE PARAFAC === ###
+def parafac_decomposition_sparse(tensor, rank, n_iter_max=100):
+    """
+    Apply sparse PARAFAC to a tensor represented in COO format.
+
+    Args:
+        indices (np.ndarray): Shape (ndim, nnz)
+        values (np.ndarray): Shape (nnz,)
+        shape (tuple): Tensor shape
+        rank (int): Rank of decomposition
+        n_iter_max (int): Max number of iterations
+
+    Returns:
+        A, B, C (torch.Tensor): Factor matrices.
+    """
+    dense_tensor = tensor.numpy()
+
+    # Get coordinates of nonzero elements
+    coords = np.array(np.nonzero(dense_tensor))  # shape (ndim, nnz)
+
+    # Get data (values) at those coords
+    data = dense_tensor[tuple(coords)]
+
+    # Create sparse COO tensor
+    T_sparse = sparse.COO(coords, data, shape=dense_tensor.shape)
+
+    tensorly_tensor = stl.tensor(T_sparse, dtype='float')
+
+    weights, factors = sparse_parafac(
+        tensorly_tensor,
+        rank=rank,
+        n_iter_max=n_iter_max,
+        init='random'
+    )
+
+    # Make sure weights is a NumPy array (dense)
+    if isinstance(weights, sparse.COO):
+        weights = weights.todense()
+
+    weights = np.array(weights)  # In case it's still not NumPy
+
+    # Now sort
+    sorted_idx = np.argsort(-weights)
+    sorted_factors = [f[:, sorted_idx] for f in factors]
+
+    # Step 1: Convert all factors to dense NumPy arrays if needed
+    dense_factors = []
+    for f in factors:
+        if isinstance(f, sparse.COO):
+            dense_factors.append(f.todense())
+        else:
+            dense_factors.append(f)
+
+
+    # Step 3: Convert to PyTorch tensors
+    A, B, C = [torch.tensor(f, dtype=torch.float32) for f in sorted_factors]
+    print(f'A.shape, {A.shape}')
 
     return A, B, C
 
 
-# Decomposition wrapper for a list of adjacency tensors
-def parafac_gen_list(adj_tensor_list, Rank):
+def parafac_decomposition_list_sparse(tensor_list, rank):
+    """
+    Apply sparse PARAFAC decomposition to a list of sparse tensors.
+
+    Args:
+        sparse_adj_list (list of dict): Each dict has 'indices', 'values', 'shape'.
+        rank (int): Rank of decomposition.
+
+    Returns:
+        List of [A, B, C] factor tensors for each input tensor.
+    """
     factors_list = []
+    for tensor in tensor_list:
 
-    for adj_tensor in adj_tensor_list:
-
-        adj_tensor = tl.tensor(adj_tensor)
-
-        # indices = adj_tensor['indices']
-        # values = adj_tensor['values']
-        # shape = adj_tensor['shape']
-        #
-        # # Convert torch tensors to numpy if needed
-        # if torch.is_tensor(indices):
-        #     indices = indices.cpu().numpy()
-        # if torch.is_tensor(values):
-        #     values = values.cpu().numpy()
-
-        # Convert to tensorly sparse tensor
-        # tl_tensor = sparse_tensor((values, indices), shape)
-
-        ## Decompose using CP/PARAFAC
-        # weights, factors = decom.parafac(tl_tensor, rank=Rank, normalize_factors=True,
-        #                                  n_iter_max=100, tol=1e-6,
-        #                                  init='svd', verbose=0)
-
-
-        # Decompose the tensor into factors A, B, C
-        # Decompose the adjacency tensor into factors A, B, C
-        weights, factors = decom.parafac(adj_tensor, rank=Rank, normalize_factors=True,
-                                         n_iter_max=100,  # you can set this higher for better convergence
-                                         tol=1e-6,  # stopping threshold
-                                         init='svd',  # or 'random'
-                                         verbose=0
-                                         )
-
-        sorted_indices = np.argsort(-weights)  # Negative sign for descending order
-        sorted_weights = weights[sorted_indices]
-        sorted_factors = [factor[:, sorted_indices] for factor in factors]
-
-        # Extract the factor matrices (A, B, C) and append to the factors_list
-        A, B, C = sorted_factors[0], sorted_factors[1], sorted_factors[2]
-
-        A = torch.from_numpy(A)
-        B = torch.from_numpy(B)
-        C = torch.from_numpy(C)
-
+        A, B, C = parafac_decomposition_sparse(tensor, rank)
         factors_list.append([A, B, C])
 
-
     return factors_list
+
+def to_torch_tensor(x):
+    if isinstance(x, sparse.COO):
+        return torch.tensor(x.todense(), dtype=torch.float32)
+    elif isinstance(x, np.ndarray):
+        return torch.from_numpy(x).float()
+    return x  # if already torch.Tensor

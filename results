@@ -173,3 +173,9 @@ latent_space_list = [[6], [10], [12], [16], [20]]
 
     ======================================
 
+# sparse
+# results_abnormal_avg = 0.4444266312755644
+# results_normal_avg = 0.12274603185651359
+# dense
+# results_abnormal_avg = 0.5753453615587205
+# results_normal_avg = 0.037704425177071246
