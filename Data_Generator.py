@@ -89,7 +89,7 @@ def generate_temporal_graph_dataset(
     # Initialize storage for all samples
     all_adj_tensors = []
     all_feat_tensors = []
-    sparse_adj_list = []
+
 
     # Generate random node features (shared across samples)
     X = torch.randn((nNodes, Time, Features))
@@ -119,20 +119,17 @@ def generate_temporal_graph_dataset(
         all_feat_tensors.append(X.clone())
     # Pack dataset
 
-        # indices, values, shape = dense_to_sparse_tensor(A)
-        # sparse_adj_list.append({
-        #     "indices": indices,
-        #     "values": values,
-        #     "shape": shape
-        # })
-
 
     dataset = {
         "adj": all_adj_tensors,  # List of adjacency tensors
         "feat": all_feat_tensors  # List of feature tensors
-        # "adj_spr": sparse_adj_list
     }
+
+    # print(f'all_adj_tensors_nonzero, {torch.count_nonzero(all_feat_tensors[0])}')
+    # print(f'all_feat_tensors_nonzero, {torch.count_nonzero(all_feat_tensors[0])}')
     # print(all_adj_tensors[0].shape)
+    # print(f'dataset adj spr, {len(dataset['adj_spr'][0]['indices'])}')
+    # print(f'dataset adj spr, {dataset['adj_spr'][0]['values']}')
 
     # Save dataset
     torch.save(dataset, save_path)
