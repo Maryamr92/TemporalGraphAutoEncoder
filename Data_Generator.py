@@ -6,6 +6,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import math
 from itertools import product
+
 from tensorly.contrib.sparse import tensor as sparse_tensor
 
 
@@ -63,11 +64,6 @@ def generate_temporal_graph_dataset(
     assert Time % num_cycle == 0, "T must be evenly divisible by num_blocks"
     block_size = Time // num_cycle
 
-    # Divide nodes into two groups
-    # num_comm = 1
-    split_idx = nNodes // num_comm
-    # V1 = list(range(split_idx))
-    # V2 = list(range(split_idx, nNodes))
     # Assign nodes to communities
     node_communities = np.array([i * num_comm // nNodes for i in range(nNodes)])
 
@@ -91,8 +87,9 @@ def generate_temporal_graph_dataset(
     all_feat_tensors = []
 
 
+
     # Generate random node features (shared across samples)
-    X = torch.randn((nNodes, Time, Features))
+    # X = torch.randn((nNodes, Time, Features))
 
     # Generate samples
     for _ in range(num_samples):
@@ -116,20 +113,40 @@ def generate_temporal_graph_dataset(
 
         # Store tensors
         all_adj_tensors.append(torch.tensor(A, dtype=torch.float32))
+        # all_feat_tensors.append(X.clone())
+
+        # Define means and ranges for each community and cycle
+
+        means, ranges = generate_means_ranges(num_comm, num_cycle)
+        print("Means:\n", means)
+        print("Ranges:\n", ranges)
+
+        # Initialize X with zeros
+        X = torch.zeros((nNodes, Time, Features))
+
+        for node in range(nNodes):
+            comm = node_communities[node]
+            for t in range(Time):
+                t_block = t // block_size
+                # Repeat only first two cycles if more
+                effective_cycle = t_block % 2
+
+                mean = means[comm, effective_cycle]
+                spread = ranges[comm, effective_cycle]
+
+                # Draw from normal distribution (can be changed to uniform if needed)
+                value = np.random.normal(loc=mean, scale=spread)
+                X[node, t, 0] = value  # Features assumed to be 1  **** if change here we need to change the code ****
+
         all_feat_tensors.append(X.clone())
+        x_sample = X.numpy()
+        # print(f'x_sample, {x_sample}')
+
     # Pack dataset
-
-
     dataset = {
         "adj": all_adj_tensors,  # List of adjacency tensors
         "feat": all_feat_tensors  # List of feature tensors
     }
-
-    # print(f'all_adj_tensors_nonzero, {torch.count_nonzero(all_feat_tensors[0])}')
-    # print(f'all_feat_tensors_nonzero, {torch.count_nonzero(all_feat_tensors[0])}')
-    # print(all_adj_tensors[0].shape)
-    # print(f'dataset adj spr, {len(dataset['adj_spr'][0]['indices'])}')
-    # print(f'dataset adj spr, {dataset['adj_spr'][0]['values']}')
 
     # Save dataset
     torch.save(dataset, save_path)
@@ -139,6 +156,25 @@ def generate_temporal_graph_dataset(
         _visualize_temporal_graph(all_adj_tensors[0], Time, node_i, node_j, num_snapshots)
 
     return dataset
+
+
+import numpy as np
+
+def generate_means_ranges(num_comm, num_cycle=2):
+    # Generate means with some spacing to avoid duplicates
+    base_means = np.linspace(1, 5, num_comm * num_cycle)  # Spread means over 1 to 5
+    np.random.shuffle(base_means)  # Shuffle for randomness
+    community_cycle_means = base_means.reshape(num_comm, num_cycle)
+
+    # Generate ranges smaller than means, spread between 0.1 and 0.5
+    base_ranges = np.linspace(0.1, 0.5, num_comm * num_cycle)
+    np.random.shuffle(base_ranges)
+    community_cycle_ranges = base_ranges.reshape(num_comm, num_cycle)
+
+    return community_cycle_means, community_cycle_ranges
+
+
+
 
 
 def _visualize_temporal_graph(A_tensor, Time, node_i, node_j, num_snapshots):

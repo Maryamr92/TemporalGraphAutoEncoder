@@ -8,21 +8,21 @@ from train_batch import train_model as train_model_batch
 from train_batch import evaluate_model as evaluate_model_batch
 from visulisation import plot_training_curves
 from parafac_fun import parafac_decomposition_list_dense, parafac_decomposition_list_sparse, parafac_decomposition_dense
-from preparing_data import split_dataset, split_dataset_sparse
+from preparing_data import split_dataset
 import matplotlib.pyplot as plt
 import time
 import os
 
 # ==== 1. Preparing Dataset Parameters ====
-nNodes = 20           # Number of nodes in the graph
-Time = 10             # Number of time steps (snapshots)
+nNodes = 12           # Number of nodes in the graph
+Time = 24             # Number of time steps (snapshots)
 Features = 1          # Feature dimensions per node
-Rank = 6              # Rank of the feature matrix (used if applicable)
+Rank = 1              # Rank of the feature matrix (used if applicable)
 
 # Stochastic graph generation parameters
 num_comm = 2          # Number of communities
-num_cycle = 2         # Number of repeating cycles in graph pattern
-num_samples = 5      # Number of graph sequences to generate
+num_cycle = 4         # Number of repeating cycles in graph pattern
+num_samples = 25      # Number of graph sequences to generate
 
 use_sparse = 0        # Whether to use sparse matrix representation
 
@@ -58,7 +58,7 @@ if not os.path.exists(save_path):
     end_time_generating_data = time.time()
     elapsed_time = end_time_generating_data - start_time_generating_Data
 
-    print(f"Elapsed time: {elapsed_time:.4f} seconds")
+    print(f"Elapsed time of generating data: {elapsed_time:.4f} seconds")
 
 else:
     print(f"Dataset already exists at: {save_path}")
