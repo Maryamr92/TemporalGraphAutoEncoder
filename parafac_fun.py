@@ -115,18 +115,10 @@ def parafac_decomposition_sparse(tensor, rank, n_iter_max=100):
     sorted_idx = np.argsort(-weights)
     sorted_factors = [f[:, sorted_idx] for f in factors]
 
-    # Step 1: Convert all factors to dense NumPy arrays if needed
-    dense_factors = []
-    for f in factors:
-        if isinstance(f, sparse.COO):
-            dense_factors.append(f.todense())
-        else:
-            dense_factors.append(f)
-
-
     # Step 3: Convert to PyTorch tensors
     A, B, C = [torch.tensor(f, dtype=torch.float32) for f in sorted_factors]
-    print(f'A.shape, {A.shape}')
+
+    # print(f'A matrix,  {A}')
 
     return A, B, C
 
@@ -150,9 +142,3 @@ def parafac_decomposition_list_sparse(tensor_list, rank):
 
     return factors_list
 
-def to_torch_tensor(x):
-    if isinstance(x, sparse.COO):
-        return torch.tensor(x.todense(), dtype=torch.float32)
-    elif isinstance(x, np.ndarray):
-        return torch.from_numpy(x).float()
-    return x  # if already torch.Tensor

@@ -11,45 +11,61 @@ from parafac_fun import parafac_decomposition_list_dense, parafac_decomposition_
 from preparing_data import split_dataset, split_dataset_sparse
 import matplotlib.pyplot as plt
 import time
+import os
 
-### ==== 1. preparing dataset
+# ==== 1. Preparing Dataset Parameters ====
+nNodes = 20           # Number of nodes in the graph
+Time = 10             # Number of time steps (snapshots)
+Features = 1          # Feature dimensions per node
+Rank = 6              # Rank of the feature matrix (used if applicable)
 
-nNodes = 20
-Time = 10
-Features = 1
-Rank = 2
-# ======== if stochastics_data:
+# Stochastic graph generation parameters
+num_comm = 2          # Number of communities
+num_cycle = 2         # Number of repeating cycles in graph pattern
+num_samples = 5      # Number of graph sequences to generate
 
-num_comm = 2
-num_cycle = 2
-num_samples = 100
-use_sparse = 1
+use_sparse = 0        # Whether to use sparse matrix representation
 
-layer_dims = [8]  # input -> hidden1 -> hidden2 -> hidden3 -> hidden4 -> output
+# Neural network architecture placeholder
+layer_dims = [8]      # Example: input layer -> hidden layers -> output
 
-save_path = f"Generated_Data/temporal_graph_dataset_{Features}-{nNodes}-{Time}_.pt"
-save_path_abnormal = f"Generated_Data/temporal_graph_dataset_abnormal_{Features}-{nNodes}-{Time}_.pt"
-### Generate and save dataset, watch node 0 and node 4
-# dataset = generate_temporal_graph_dataset(
-#     nNodes=nNodes,
-#     Time=Time,
-#     Features=Features,
-#     num_cycle=num_cycle,
-#     num_comm=num_comm,
-#     num_samples=num_samples,
-#     high_prob=0.2,
-#     low_prob=0.03,
-#     save_path=save_path,
-#     visualize=False,
-#     node_i= 0,   # Choose a node within num of node set
-#     node_j= 2,    # Choose a node within num of node set
-#     num_snapshots = Time
-# )
 
-print(f"Dataset saved as {save_path}")
+# Paths to save generated data
+save_path = f"Generated_Data/{num_samples}_temporal_graph_dataset_{Features}-{nNodes}-{Time}_.pt"
+save_path_abnormal = f"Generated_Data/{num_samples}_temporal_graph_dataset_abnormal_{Features}-{nNodes}-{Time}_.pt"
+
+# ==== 2. Generate Dataset if Not Already Saved ====
+if not os.path.exists(save_path):
+    print(f"Generating new dataset and saving to: {save_path}")
+    start_time_generating_Data = time.time()
+
+    dataset = generate_temporal_graph_dataset(
+        nNodes=nNodes,
+        Time=Time,
+        Features=Features,
+        num_cycle=num_cycle,
+        num_comm=num_comm,
+        num_samples=num_samples,
+        high_prob=0.2,         # Probability of intra-community edge
+        low_prob=0.03,         # Probability of inter-community edge
+        save_path=save_path,   # File path to save the generated dataset
+        visualize=False,       # Set True to plot the graph evolution
+        node_i=0,              # Watch interactions from node 0
+        node_j=2,              # Watch interactions to node 2
+        num_snapshots=Time     # Number of temporal snapshots
+    )
+
+    end_time_generating_data = time.time()
+    elapsed_time = end_time_generating_data - start_time_generating_Data
+
+    print(f"Elapsed time: {elapsed_time:.4f} seconds")
+
+else:
+    print(f"Dataset already exists at: {save_path}")
+
+
+
 #### ==== 2. Making the model
-start_time = time.time()
-
 
 # Example of layer dimensions: input_dim=10, hidden layers, final output_dim=5
 input_shape= (nNodes, Time, Features)
@@ -74,7 +90,7 @@ wrapped_model = prepare_wrapped_model(model, nNodes=nNodes, Time=Time, Rank=Rank
 show_model_summary(wrapped_model, nNodes=nNodes, Time=Time, Features=Features)
 
 
-#### ==== 3. preparing the data
+#### ==== 3. preparing the parafac decomposition matrices
 
 # choose the dataset:
 
@@ -84,10 +100,12 @@ if num_samples > 1:
     loaded_data = torch.load(save_path)
     adj_list_full = loaded_data["adj"]
     feat_list_full = loaded_data["feat"]
-    adj_list_full_spars = loaded_data["adj_spr"]
+
 
     adj_list_train, feat_list_train, adj_list_val, feat_list_val = split_dataset(
         adj_list_full, feat_list_full, train_ratio=0.8, seed=42)
+
+    start_time_parafac_decomposition = time.time()
 
     # Apply decomposition based on the mode
     if use_sparse:
@@ -95,11 +113,20 @@ if num_samples > 1:
         adj_list_train = parafac_decomposition_list_sparse(adj_list_train, Rank)
         adj_list_val = parafac_decomposition_list_sparse(adj_list_val, Rank)
 
+        end_time_parafac_decomposition = time.time()
+        elapsed_time = end_time_parafac_decomposition - start_time_parafac_decomposition
+
+        print(f"Elapsed time parse parafac_decomposition : {elapsed_time:.4f} seconds")
+
     else:
 
         adj_list_train = parafac_decomposition_list_dense(adj_list_train, Rank)
         adj_list_val = parafac_decomposition_list_dense(adj_list_val, Rank)
 
+        end_time_parafac_decomposition = time.time()
+        elapsed_time = end_time_parafac_decomposition - start_time_parafac_decomposition
+
+        print(f"Elapsed time dense parafac_decomposition: {elapsed_time:.4f} seconds")
 
 else:
     ### ---- for 1 sample ----- #####
@@ -119,6 +146,7 @@ else:
 
 ### ==== 4. train and test the data
 
+start_time_training = time.time()
 if num_samples == 1:
     train_losses, val_losses, grad_history, A_hat, B_hat, C_hat = train_model(
         model=model,
@@ -158,7 +186,10 @@ plot_training_curves(train_losses, val_losses, log_axis='False')
 # print(f'norm(C_hat - C_true), {torch.norm(C_hat - C_true)}')
 #
 #
+end_time_training = time.time()
+elapsed_time = end_time_training - start_time_training
 
+print(f"Elapsed time training: {elapsed_time:.4f} seconds")
 
 ### ===== 6. Evaluation
 
@@ -209,6 +240,8 @@ results_abnormal = 0.0
 
 
 for n in range(len(adj_list_val)):
+
+
     A_true_val, B_true_val, C_true_val = adj_list_val[n]
     total_loss_bon, A_pred_bon, B_pred_bon, C_pred_bon = evaluate_model(
         model, feat_list_val[n], A_true_val, B_true_val, C_true_val, Rank
@@ -233,10 +266,6 @@ print(f'results_abnormal_avg = {results_abnormal/len(adj_list_val)}')
 print(f'results_normal_avg = {results_normal/len(adj_list_val)}')
 
 
-end_time = time.time()
-elapsed_time = end_time - start_time
-
-print(f"Elapsed time: {elapsed_time:.4f} seconds")
 
 # x = np.arange(len(adj_list_val))
 # width = 0.25
