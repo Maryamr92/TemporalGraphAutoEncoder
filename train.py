@@ -59,8 +59,6 @@ def train_model(
         model.train()
         optimizer.zero_grad()
 
-
-
         # Fire the neurons!
         A_hat, B_hat, C_hat = model(input_tensor, A, B, C, Rank)
 
