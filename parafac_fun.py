@@ -38,12 +38,27 @@ def parafac_decomposition_dense(tensor, rank, n_iter_max=100):
         tol=1e-6,
         init='svd'
     )
+    # print(f'weight dense, {weights}')
 
     # Sort by descending weights
     sorted_idx = np.argsort(-weights)
     sorted_factors = [f[:, sorted_idx] for f in factors]
 
+    sorted_weights =  weights[sorted_idx]
+
+    # print(f'sorted_weights dense, {sorted_weights}')
+
     A, B, C = [torch.from_numpy(f) for f in sorted_factors]
+
+    # print(f'A Dense matrix,  {A}')
+    # print(f'B Dense matrix,  {B}')
+    # print(f'C Dense matrix,  {C}')
+
+    reconstructed_tensor = cp_to_tensor((weights, factors))
+    error = tl.norm(tensor - reconstructed_tensor)
+
+    # print("Reconstruction Error dense (Frobenius norm):", error)
+
     return A, B, C
 
 
@@ -101,9 +116,12 @@ def parafac_decomposition_sparse(tensor, rank, n_iter_max=100):
     weights, factors = sparse_parafac(
         tensorly_tensor,
         rank=rank,
+        normalize_factors=True,
         n_iter_max=n_iter_max,
         init='random'
     )
+
+
 
     # Make sure weights is a NumPy array (dense)
     if isinstance(weights, sparse.COO):
@@ -111,14 +129,31 @@ def parafac_decomposition_sparse(tensor, rank, n_iter_max=100):
 
     weights = np.array(weights)  # In case it's still not NumPy
 
+    # print(f'weight sparse, {weights}')
+
     # Now sort
     sorted_idx = np.argsort(-weights)
     sorted_factors = [f[:, sorted_idx] for f in factors]
 
+    sorted_weights = weights[sorted_idx]
+
+    # print(f'sorted_weights sparse, {sorted_weights}')
+
     # Step 3: Convert to PyTorch tensors
     A, B, C = [torch.tensor(f, dtype=torch.float32) for f in sorted_factors]
 
-    # print(f'A matrix,  {A}')
+    # print(f'A sparse matrix,  {A}')
+    # print(f'B sparse matrix,  {B}')
+    # print(f'C sparse matrix,  {C}')
+
+    reconstructed_tensor = cp_to_tensor((weights, factors))
+    tensorly_tensor = tl.tensor(tensor, dtype='float')
+
+    error = tl.norm(tensorly_tensor - reconstructed_tensor)
+
+    # print("Reconstruction Error sparse (Frobenius norm):", error)
+
+
 
     return A, B, C
 
