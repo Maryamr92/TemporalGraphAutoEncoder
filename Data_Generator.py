@@ -1,11 +1,11 @@
 # temporal_graph_generator.py
 
-import numpy as np
 import torch
 import networkx as nx
 import matplotlib.pyplot as plt
 import math
 from itertools import product
+import numpy as np
 
 from tensorly.contrib.sparse import tensor as sparse_tensor
 
@@ -37,7 +37,10 @@ def generate_temporal_graph_dataset(
         visualize=False,
         node_i=0,
         node_j=1,
-        num_snapshots = 4
+        num_snapshots = 4,
+        feat_means = [1.2, 2.5, 3.1, 4.0],
+        feat_ranges = [0.2, 0.3, 0.1, 0.4]
+
 ):
     """
     Generate synthetic temporal graph dataset with node features and save it.
@@ -86,12 +89,34 @@ def generate_temporal_graph_dataset(
     all_adj_tensors = []
     all_feat_tensors = []
 
-
-
     # Generate random node features (shared across samples)
     # X = torch.randn((nNodes, Time, Features))
 
-    # Generate samples
+    means, ranges = generate_means_ranges(feat_means, feat_ranges, num_comm, num_cycle=2)
+
+    print("Means:\n", means)
+    print("Ranges:\n", ranges)
+
+    # Initialize X with zeros
+    X = torch.zeros((nNodes, Time, Features))
+
+    for node in range(nNodes):
+        comm = node_communities[node]
+        for t in range(Time):
+            t_block = t // block_size
+            # Repeat only first two cycles if more
+            effective_cycle = t_block % 2
+
+            mean = means[comm, effective_cycle]
+            spread = ranges[comm, effective_cycle]
+
+            # Draw from normal distribution (can be changed to uniform if needed)
+            value = np.random.normal(loc=mean, scale=spread)
+            X[node, t, 0] = value  # Features assumed to be 1  **** if changes here we need to change the code ****
+
+
+
+    ## Generate samples
     for _ in range(num_samples):
         A = np.zeros((nNodes, nNodes, Time))  # Adjacency tensor (n, n, T)
 
@@ -113,34 +138,35 @@ def generate_temporal_graph_dataset(
 
         # Store tensors
         all_adj_tensors.append(torch.tensor(A, dtype=torch.float32))
-        # all_feat_tensors.append(X.clone())
+        all_feat_tensors.append(X.clone())
 
         # Define means and ranges for each community and cycle
 
-        means, ranges = generate_means_ranges(num_comm, num_cycle)
-        print("Means:\n", means)
-        print("Ranges:\n", ranges)
+        # means, ranges = generate_means_ranges(num_comm, num_cycle=2)
+        # means, ranges = generate_means_ranges2(feat_means, feat_ranges, num_comm, num_cycle=2)
+        #
+        # print("Means:\n", means)
+        # print("Ranges:\n", ranges)
+        #
+        # # Initialize X with zeros
+        # X = torch.zeros((nNodes, Time, Features))
+        #
+        # for node in range(nNodes):
+        #     comm = node_communities[node]
+        #     for t in range(Time):
+        #         t_block = t // block_size
+        #         # Repeat only first two cycles if more
+        #         effective_cycle = t_block % 2
+        #
+        #         mean = means[comm, effective_cycle]
+        #         spread = ranges[comm, effective_cycle]
+        #
+        #         # Draw from normal distribution (can be changed to uniform if needed)
+        #         value = np.random.normal(loc=mean, scale=spread)
+        #         X[node, t, 0] = value  # Features assumed to be 1  **** if changes here we need to change the code ****
+        #
+        # all_feat_tensors.append(X.clone())
 
-        # Initialize X with zeros
-        X = torch.zeros((nNodes, Time, Features))
-
-        for node in range(nNodes):
-            comm = node_communities[node]
-            for t in range(Time):
-                t_block = t // block_size
-                # Repeat only first two cycles if more
-                effective_cycle = t_block % 2
-
-                mean = means[comm, effective_cycle]
-                spread = ranges[comm, effective_cycle]
-
-                # Draw from normal distribution (can be changed to uniform if needed)
-                value = np.random.normal(loc=mean, scale=spread)
-                X[node, t, 0] = value  # Features assumed to be 1  **** if change here we need to change the code ****
-
-        all_feat_tensors.append(X.clone())
-        x_sample = X.numpy()
-        # print(f'x_sample, {x_sample}')
 
     # Pack dataset
     dataset = {
@@ -158,23 +184,15 @@ def generate_temporal_graph_dataset(
     return dataset
 
 
-import numpy as np
+def generate_means_ranges(means, ranges, num_comm, num_cycle=2):
+    # Ensure the inputs have the correct shape
+    assert len(means) == num_comm * num_cycle, "Length of means must match num_comm * num_cycle"
+    assert len(ranges) == num_comm * num_cycle, "Length of ranges must match num_comm * num_cycle"
 
-def generate_means_ranges(num_comm, num_cycle=2):
-    # Generate means with some spacing to avoid duplicates
-    base_means = np.linspace(1, 5, num_comm * num_cycle)  # Spread means over 1 to 5
-    np.random.shuffle(base_means)  # Shuffle for randomness
-    community_cycle_means = base_means.reshape(num_comm, num_cycle)
-
-    # Generate ranges smaller than means, spread between 0.1 and 0.5
-    base_ranges = np.linspace(0.1, 0.5, num_comm * num_cycle)
-    np.random.shuffle(base_ranges)
-    community_cycle_ranges = base_ranges.reshape(num_comm, num_cycle)
+    community_cycle_means = np.array(means).reshape(num_comm, num_cycle)
+    community_cycle_ranges = np.array(ranges).reshape(num_comm, num_cycle)
 
     return community_cycle_means, community_cycle_ranges
-
-
-
 
 
 def _visualize_temporal_graph(A_tensor, Time, node_i, node_j, num_snapshots):
