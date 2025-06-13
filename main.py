@@ -15,7 +15,7 @@ import os
 import numpy as np
 
 # ==== 1. Preparing Dataset Parameters ====
-nNodes = 100           # Number of nodes in the graph
+nNodes = 110           # Number of nodes in the graph
 Time = 60             # Number of time steps (snapshots)
 Features = 1          # Feature dimensions per node
 Rank = 5              # Rank of the feature matrix (used if applicable)
