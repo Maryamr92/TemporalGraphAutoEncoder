@@ -15,10 +15,10 @@ import os
 import numpy as np
 
 # ==== 1. Preparing Dataset Parameters ====
-nNodes = 300           # Number of nodes in the graph
-Time = 200             # Number of time steps (snapshots)
+nNodes = 10000           # Number of nodes in the graph
+Time = 1000             # Number of time steps (snapshots)
 Features = 1          # Feature dimensions per node
-Rank = 50              # Rank of the feature matrix (used if applicable)
+Rank = 10              # Rank of the feature matrix (used if applicable)
 
 # Stochastic graph generation parameters
 num_comm = 2          # Number of communities
