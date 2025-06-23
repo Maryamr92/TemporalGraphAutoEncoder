@@ -5,7 +5,7 @@ import torch
 from torchinfo import summary
 from train import train_model, evaluate_model
 from train_batch import train_model as train_model_batch
-from train_batch import evaluate_model as evaluate_model_batch
+from train_batch import evaluate_model_single, evaluate_model_list
 from visulisation import plot_training_curves
 from parafac_fun import parafac_decomposition_list_dense, parafac_decomposition_list_sparse, parafac_decomposition_dense
 from preparing_data import split_dataset
@@ -15,25 +15,29 @@ import os
 import numpy as np
 
 # ==== 1. Preparing Dataset Parameters ====
-nNodes = 110           # Number of nodes in the graph
-Time = 60             # Number of time steps (snapshots)
+nNodes = 300           # Number of nodes in the graph
+Time = 200             # Number of time steps (snapshots)
 Features = 1          # Feature dimensions per node
-Rank = 5              # Rank of the feature matrix (used if applicable)
+Rank = 50              # Rank of the feature matrix (used if applicable)
 
 # Stochastic graph generation parameters
 num_comm = 2          # Number of communities
 num_cycle = 4         # Number of repeating cycles in graph pattern
-num_samples = 10      # Number of graph sequences to generate
+num_samples = 50      # Number of graph sequences to generate
 
-use_sparse = True        # Whether to use sparse matrix representation
+use_sparse = False        # Whether to use sparse matrix representation
 
 # Neural network architecture placeholder
-layer_dims = [20]      # Example: input layer -> hidden layers -> output
+layer_dims = [50, 50]      # Example: input layer -> hidden layers -> output
 
 gen_new_data = True
+
 # Paths to save generated data
-save_path = f"Generated_Data_new/{num_samples}_temporal_graph_dataset_{Features}-{nNodes}-{Time}_.pt"
-save_path_abnormal = f"Generated_Data_new/{num_samples}_temporal_graph_dataset_abnormal_{Features}-{nNodes}-{Time}_.pt"
+save_path = f"Generated_Data/{num_samples}_temporal_graph_dataset_{Features}-{nNodes}-{Time}_.pt"
+save_path_abnormal = f"Generated_Data/{num_samples}_temporal_graph_dataset_abnormal_{Features}-{nNodes}-{Time}_.pt"
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+print(f"Using device: {device}")
 
 # ==== 2. Generate Dataset if Not Already Saved ====
 # if not os.path.exists(save_path):
@@ -56,7 +60,8 @@ if gen_new_data:
         node_j=2,              # Watch interactions to node 2
         num_snapshots=Time,     # Number of temporal snapshots
         feat_means= [1.2, 2.5, 3.1, 4.0],   # change from small values to big changes
-        feat_ranges= [0.2, 0.3, 0.1, 0.4]
+        feat_ranges= [0.2, 0.3, 0.1, 0.4],
+        device=device
     )
 
     end_time_generating_data = time.time()
@@ -67,7 +72,11 @@ if gen_new_data:
 else:
     print(f"Dataset already exists at: {save_path}")
 
-# save_path = 'Generated_Data/temporal_graph_dataset_1-100-60_.pt'
+
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+print(f"Using device: {device}")
+
 
 #### ==== 2. Making the model
 
@@ -80,18 +89,18 @@ model = TGCN_Autoencoder(
     nNodes=nNodes,
     Time=Time,
     Rank=Rank,
-    dropout=0.2
-)
+    dropout=0.2,
+    device=device
+).to(device)
 
 summary(model)
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # Wrap and prepare
-wrapped_model = prepare_wrapped_model(model, nNodes=nNodes, Time=Time, Rank=Rank)
+wrapped_model = prepare_wrapped_model(model, nNodes=nNodes, Time=Time, Rank=Rank, device=device)
 
 # Show model summary
-show_model_summary(wrapped_model, nNodes=nNodes, Time=Time, Features=Features)
+show_model_summary(wrapped_model, nNodes=nNodes, Time=Time, Features=Features, device=device)
 
 
 #### ==== 3. preparing the parafac decomposition matrices
@@ -115,8 +124,8 @@ if num_samples > 1:
     # Apply decomposition based on the mode
     if use_sparse:
 
-        adj_list_train = parafac_decomposition_list_sparse(adj_list_train, Rank)
-        adj_list_val = parafac_decomposition_list_sparse(adj_list_val, Rank)
+        adj_list_train = parafac_decomposition_list_sparse(adj_list_train, Rank, device=device)
+        adj_list_val = parafac_decomposition_list_sparse(adj_list_val, Rank, device=device)
 
         end_time_parafac_decomposition = time.time()
         elapsed_time = end_time_parafac_decomposition - start_time_parafac_decomposition
@@ -125,8 +134,8 @@ if num_samples > 1:
 
     else:
 
-        adj_list_train = parafac_decomposition_list_dense(adj_list_train, Rank)
-        adj_list_val = parafac_decomposition_list_dense(adj_list_val, Rank)
+        adj_list_train = parafac_decomposition_list_dense(adj_list_train, Rank, device=device)
+        adj_list_val = parafac_decomposition_list_dense(adj_list_val, Rank, device=device)
 
         end_time_parafac_decomposition = time.time()
         elapsed_time = end_time_parafac_decomposition - start_time_parafac_decomposition
@@ -187,6 +196,7 @@ else:
 #### ==== 5. Visualization
 
 plot_training_curves(train_losses, val_losses, log_axis='False')
+plt.show()
 #
 # print(f'norm(A_hat - A_true), {torch.norm(A_hat - A_true)}')
 # print(f'norm(B_hat - B_true), {torch.norm(B_hat - B_true)}')
@@ -216,11 +226,12 @@ def gen_abnormal_data(num_samples):
         node_j= 2,    # Choose a node within num of node set
         num_snapshots = Time,
         feat_means=[1.2, 2.5, 3.1, 4.0],
-        feat_ranges=[0.2, 0.9, 0.1, 0.6]
+        feat_ranges=[0.2, 0.9, 0.1, 0.6],
+        device=device
     )
     return abnormal_data
 
-print('abnormal sample --------------------------')
+print('abnormal sample --------------------------------------------------------------------')
 # abnormal_data_ = torch.load(save_path_abnormal)
 # adj_list_full_mal = abnormal_data["adj"]
 # feat_list_full_mal = abnormal_data["feat"]
@@ -253,7 +264,7 @@ normal_losses = []
 for n in range(len(adj_list_val)):
 
     A_true_val, B_true_val, C_true_val = adj_list_val[n]
-    total_loss_bon, A_pred_bon, B_pred_bon, C_pred_bon = evaluate_model(
+    total_loss_bon, A_pred_bon, B_pred_bon, C_pred_bon = evaluate_model_single(
         model, feat_list_val[n], A_true_val, B_true_val, C_true_val, Rank
     )
     results_normal += total_loss_bon
@@ -264,10 +275,10 @@ for n in range(len(adj_list_val)):
     feat_list_full_mal = abnormal_data["feat"]
 
     input_tensor = feat_list_full_mal[0]
-    mal_factors = parafac_decomposition_list_sparse(adj_list_full_mal, Rank)
+    mal_factors = parafac_decomposition_list_dense(adj_list_full_mal, Rank)
     A_true_mal, B_true_mal, C_true_mal = mal_factors[0]
 
-    total_loss_mal, A_pred_mal, B_pred_mal, C_pred_mal = evaluate_model(
+    total_loss_mal, A_pred_mal, B_pred_mal, C_pred_mal = evaluate_model_single(
         model, input_tensor, A_true_mal, B_true_mal, C_true_mal, Rank
     )
 

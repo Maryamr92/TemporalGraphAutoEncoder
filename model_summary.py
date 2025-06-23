@@ -5,9 +5,9 @@ from torchinfo import summary
 
 # ----------------- Wrapper for Model to Fix Extra Inputs -----------------
 class ModelWrapper(nn.Module):
-    def __init__(self, model, A, B, C, Rank):
+    def __init__(self, model, A, B, C, Rank, device=None):
         super(ModelWrapper, self).__init__()
-        self.model = model
+        self.model = model.to(device) if device else model
         self.A = A
         self.B = B
         self.C = C
@@ -17,7 +17,7 @@ class ModelWrapper(nn.Module):
         return self.model(x, self.A, self.B, self.C, self.Rank)
 
 # ----------------- Utility Function: Prepare Wrapped Model -----------------
-def prepare_wrapped_model(model, nNodes, Time, Rank, device="cpu"):
+def prepare_wrapped_model(model, nNodes, Time, Rank, device=None):
     """
     Prepare a wrapped model for summary() or evaluation.
 
@@ -36,18 +36,19 @@ def prepare_wrapped_model(model, nNodes, Time, Rank, device="cpu"):
 
     # Create dummy inputs
 
-    A = torch.rand(nNodes, Rank)
-    B = torch.rand(nNodes, Rank)
-    C = torch.rand(Time, Rank)
+    A = torch.rand(nNodes, Rank, device=device)
+    B = torch.rand(nNodes, Rank, device=device) 
+    C = torch.rand(Time, Rank, device=device)
+    model = model.to(device)
 
     # Wrap the model
-    wrapped_model = ModelWrapper(model, A, B, C, Rank)
+    wrapped_model = ModelWrapper(model, A, B, C, Rank).to(device)
 
     return wrapped_model
 
 
 # ----------------- Utility Function: Show Model Summary -----------------
-def show_model_summary(wrapped_model, nNodes, Time, Features):
+def show_model_summary(wrapped_model, nNodes, Time, Features, device=None):
     """
     Display a nice summary of the model.
 
@@ -56,12 +57,13 @@ def show_model_summary(wrapped_model, nNodes, Time, Features):
         input_tensor (torch.Tensor): Dummy input.
     """
     input_shape= (nNodes, Time, Features)
-    input_tensor = torch.randn(input_shape)
+    input_tensor = torch.randn(input_shape, device=device)
 
     summary(
         wrapped_model,
         input_size=input_tensor.shape,
         verbose=1,
         col_names=["input_size", "output_size", "num_params", "trainable"],
+        device=device
     )
 

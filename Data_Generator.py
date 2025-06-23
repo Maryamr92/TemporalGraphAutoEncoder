@@ -11,16 +11,29 @@ from tensorly.contrib.sparse import tensor as sparse_tensor
 
 
 
-def dense_to_sparse_tensor(A):
-    """
-    Convert a dense 3D tensor to sparse COO format (indices, values).
-    """
-    # A = A.numpy()
-    indices = np.array(np.nonzero(A))
-    values = A[indices[0], indices[1], indices[2]]
-    shape = A.shape
+# def dense_to_sparse_tensor(A, device=None):
+#     """
+#     Convert a dense 3D tensor to sparse COO format (indices, values).
+#     Args:
+#         A (torch.Tensor): Dense tensor of shape (n, n, T).
+#         device (str): Device to place the sparse tensors on.
 
-    return torch.tensor(indices, dtype=torch.long), torch.tensor(values, dtype=torch.float32), shape
+#     Returns:
+#         tuple: (indices, values, shape) where:
+#             - indices (torch.Tensor): Indices of non-zero elements in COO format.
+#             - values (torch.Tensor): Values of the non-zero elements.
+#             - shape (tuple): Shape of the original tensor.    
+
+#     """
+
+#     # self.device = device if device else torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+#     # A = A.numpy()
+#     indices = np.array(np.nonzero(A))
+#     values = A[indices[0], indices[1], indices[2]]
+#     shape = A.shape
+
+#     return torch.tensor(indices, dtype=torch.long, device=device), torch.tensor(values, dtype=torch.float32, device=device), shape
 
 
 
@@ -39,7 +52,8 @@ def generate_temporal_graph_dataset(
         node_j=1,
         num_snapshots = 4,
         feat_means = [1.2, 2.5, 3.1, 4.0],
-        feat_ranges = [0.2, 0.3, 0.1, 0.4]
+        feat_ranges = [0.2, 0.3, 0.1, 0.4],
+        device=None
 
 ):
     """
@@ -137,8 +151,8 @@ def generate_temporal_graph_dataset(
                         A[i, j, t] = A[j, i, t] = 1  # Symmetric graph
 
         # Store tensors
-        all_adj_tensors.append(torch.tensor(A, dtype=torch.float32))
-        all_feat_tensors.append(X.clone())
+        all_adj_tensors.append(torch.tensor(A, dtype=torch.float32, device=device))
+        all_feat_tensors.append(X.clone().to(device))
 
         # Define means and ranges for each community and cycle
 
