@@ -6,8 +6,9 @@ from tensorly.cp_tensor import cp_to_tensor
 # from tensorly.contrib.sparse import tensor as sparse_tensor
 from tensorly.contrib.sparse.decomposition import parafac as sparse_parafac
 from scipy.sparse import coo_matrix
-import sparse                      # Sparse array library, NOT PyTorch
+import sparse  # Sparse array library, NOT PyTorch
 import tensorly.contrib.sparse as stl
+
 # from tensorly.contrib.sparse.decomposition import parafac
 
 
@@ -16,7 +17,7 @@ tl.set_backend('pytorch')
 
 
 ### === DENSE PARAFAC === ###
-def parafac_decomposition_dense(adj_tensor, rank, n_iter_max=100, device=None):
+def parafac_decomposition_dense(adj_tensor, rank, n_iter_max=100, device=None, save_path_prefix=None):
     """
     Apply dense PARAFAC decomposition to a 3D tensor.
 
@@ -48,26 +49,26 @@ def parafac_decomposition_dense(adj_tensor, rank, n_iter_max=100, device=None):
     sorted_idx = torch.argsort(-weights)
     sorted_factors = [f[:, sorted_idx] for f in factors]
 
-    sorted_weights =  weights[sorted_idx]
+    sorted_weights = weights[sorted_idx]
 
     # print(f'sorted_weights dense, {sorted_weights}')
     A, B, C = sorted_factors
 
-    # A, B, C = [torch.from_numpy(f) for f in sorted_factors]
-
-    # print(f'A Dense matrix,  {A}')
-    # print(f'B Dense matrix,  {B}')
-    # print(f'C Dense matrix,  {C}')
+    if save_path_prefix:
+        torch.save(A, f"{save_path_prefix}_A.pt")
+        torch.save(B, f"{save_path_prefix}_B.pt")
+        torch.save(C, f"{save_path_prefix}_C.pt")
+        torch.save(sorted_weights, f"{save_path_prefix}_weights.pt")
 
     reconstructed_tensor = cp_to_tensor((weights, factors))
     error = tl.norm(adj_tensor - reconstructed_tensor)
 
     # print("Reconstruction Error dense (Frobenius norm):", error)
 
-    return A, B, C
+    return A.to(device), B.to(device), C.to(device), sorted_weights.to(device)
 
 
-def parafac_decomposition_list_dense(tensor_list, rank, device=None):
+def parafac_decomposition_list_dense(tensor_list, rank, device=None, save_prefix=None):
     """
     Apply dense PARAFAC to a list of tensors.
 
@@ -79,19 +80,18 @@ def parafac_decomposition_list_dense(tensor_list, rank, device=None):
         list of [A, B, C] factors (torch.Tensors)
     """
 
-    factors_list =[]
+    factors_list = []
 
-    for tensor in tensor_list:
-
-        A, B, C = parafac_decomposition_dense(tensor, rank, n_iter_max=100, device=device)
-
-        factors_list.append([A.to(device), B.to(device), C.to(device)])
-
-    return factors_list
+    results = []
+    for i, tensor in enumerate(tensor_list):
+        prefix = f"{save_prefix}_sample{i}" if save_prefix else None
+        A, B, C, weights = parafac_decomposition_dense(tensor, rank, device=device, save_path_prefix=prefix)
+        results.append((A, B, C, weights))
+    return results
 
 
 ### === SPARSE PARAFAC === ###
-def parafac_decomposition_sparse(adj_tensor, rank, n_iter_max=100, device=None):
+def parafac_decomposition_sparse(adj_tensor, rank, n_iter_max=100, device=None, save_path_prefix=None):
     """
     Apply sparse PARAFAC to a tensor represented in COO format.
 
@@ -130,8 +130,6 @@ def parafac_decomposition_sparse(adj_tensor, rank, n_iter_max=100, device=None):
         init='random'
     )
 
-
-
     # Make sure weights is a NumPy array (dense)
     if isinstance(weights, sparse.COO):
         weights = weights.todense()
@@ -151,23 +149,27 @@ def parafac_decomposition_sparse(adj_tensor, rank, n_iter_max=100, device=None):
     # Step 3: Convert to PyTorch tensors
     A, B, C = [torch.tensor(f, dtype=torch.float32) for f in sorted_factors]
 
-    # print(f'A sparse matrix,  {A}')
-    # print(f'B sparse matrix,  {B}')
-    # print(f'C sparse matrix,  {C}')
 
     reconstructed_tensor = cp_to_tensor((weights, factors))
     tensorly_tensor = tl.tensor(dense_tensor, dtype='float')
 
     error = tl.norm(tensorly_tensor - reconstructed_tensor)
 
-    # print("Reconstruction Error sparse (Frobenius norm):", error)
+    if save_path_prefix:
+        torch.save(A, f"{save_path_prefix}_A.pt")
+        torch.save(B, f"{save_path_prefix}_B.pt")
+        torch.save(C, f"{save_path_prefix}_C.pt")
+        torch.save(sorted_weights, f"{save_path_prefix}_weights.pt")
+
+    reconstructed_tensor = cp_to_tensor((weights, factors))
+    error = tl.norm(adj_tensor - reconstructed_tensor)
+
+    # print("Reconstruction Error dense (Frobenius norm):", error)
+
+    return A.to(device), B.to(device), C.to(device), sorted_weights.to(device)
 
 
-
-    return A, B, C
-
-
-def parafac_decomposition_list_sparse(tensor_list, rank, device=None):
+def parafac_decomposition_list_sparse(tensor_list, rank, device=None, save_prefix=None):
     """
     Apply sparse PARAFAC decomposition to a list of sparse tensors.
 
@@ -178,22 +180,24 @@ def parafac_decomposition_list_sparse(tensor_list, rank, device=None):
     Returns:
         List of [A, B, C] factor tensors for each input tensor.
     """
-    factors_list = []
-    for tensor in tensor_list:
+    results = []
+    for i, tensor in enumerate(tensor_list):
+        prefix = f"{save_prefix}_sample{i}" if save_prefix else None
+        A, B, C, weights = parafac_decomposition_sparse(tensor, rank, device=device, save_path_prefix=prefix)
+        results.append((A, B, C, weights))
+    return results
 
-        A, B, C = parafac_decomposition_sparse(tensor, rank, n_iter_max=100, device=device)
-        factors_list.append([A.to(device), B.to(device), C.to(device)])
+### -------------------------------------------------------
+#### check this function
 
-    return factors_list
-
-
-
-import torch
+### === SPARSE PARAFAC ON GPU === ###
+# Note: This implementation uses PyTorch's sparse tensors and assumes the input is in COO format
+# Requires PyTorch 1.6+ for sparse tensor support
 
 def sparse_parafac_gpu(tensor, rank, n_iter=50, device='cuda'):
     """
     Perform sparse CP decomposition (PARAFAC) using ALS on GPU.
-    
+
     Args:
         tensor (torch.sparse.Tensor): 3D sparse tensor (shape: I x J x K)
         rank (int): CP rank
@@ -208,7 +212,7 @@ def sparse_parafac_gpu(tensor, rank, n_iter=50, device='cuda'):
 
     I, J, K = tensor.shape
     indices = tensor._indices()  # shape: (3, nnz)
-    values = tensor._values()    # shape: (nnz,)
+    values = tensor._values()  # shape: (nnz,)
 
     # Initialize factor matrices on GPU
     A = torch.rand(I, rank, device=device, requires_grad=False)
@@ -252,7 +256,6 @@ def sparse_parafac_gpu(tensor, rank, n_iter=50, device='cuda'):
     return A, B, C
 
 
-
 def parafac_decomposition_list_sparse_gpu(tensor_list, rank, n_iter=50, device='cuda'):
     """
     Apply GPU-based sparse PARAFAC decomposition (ALS) to a list of sparse 3D tensors.
@@ -279,7 +282,6 @@ def parafac_decomposition_list_sparse_gpu(tensor_list, rank, n_iter=50, device='
         factors_list.append([A, B, C])
 
     return factors_list
-
 
 # # Create a sparse 3D tensor on GPU
 # I, J, K = 50, 60, 70

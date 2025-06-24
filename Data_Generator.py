@@ -22,7 +22,7 @@ from tensorly.contrib.sparse import tensor as sparse_tensor
 #         tuple: (indices, values, shape) where:
 #             - indices (torch.Tensor): Indices of non-zero elements in COO format.
 #             - values (torch.Tensor): Values of the non-zero elements.
-#             - shape (tuple): Shape of the original tensor.    
+#             - shape (tuple): Shape of the original tensor.
 
 #     """
 
@@ -112,7 +112,7 @@ def generate_temporal_graph_dataset(
     print("Ranges:\n", ranges)
 
     # Initialize X with zeros
-    X = torch.zeros((nNodes, Time, Features))
+    X = torch.zeros((nNodes, Time, Features), dtype=torch.float16, device=device)
 
     for node in range(nNodes):
         comm = node_communities[node]
@@ -128,64 +128,53 @@ def generate_temporal_graph_dataset(
             value = np.random.normal(loc=mean, scale=spread)
             X[node, t, 0] = value  # Features assumed to be 1  **** if changes here we need to change the code ****
 
+        print(f'num of node, {node}')
 
-
-    ## Generate samples
     for _ in range(num_samples):
-        A = np.zeros((nNodes, nNodes, Time))  # Adjacency tensor (n, n, T)
+        A_slices = []
 
         for t in range(Time):
-            # t = Time // priode #  in baraye dashtane chanta pride zamani hast
             t_block = t // block_size
-            # print(f't_block', {t_block})
+            edge_indices = []
+            edge_values = []
+
             for i in range(nNodes):
-                for j in range(i +1 , nNodes):  # Only upper triangle needed (symmetry)
-                    # group_i = 0 if i < split_idx else 1
-                    # group_j = 0 if j < split_idx else 1
-                    # if np.random.rand() <= P[group_i, group_j, t_block]:
-                    #     A[i, j, t] = A[j, i, t] = 1  # Symmetric graph
+                for j in range(i + 1, nNodes):  # upper triangle
                     group_i = node_communities[i]
                     group_j = node_communities[j]
                     prob = P[group_i, group_j, t_block]
+
                     if np.random.rand() <= prob:
-                        A[i, j, t] = A[j, i, t] = 1  # Symmetric graph
+                        edge_indices.append([i, j])
+                        edge_indices.append([j, i])  # symmetric edge
+                        edge_values.append(1.0)
+                        edge_values.append(1.0)
 
-        # Store tensors
-        all_adj_tensors.append(torch.tensor(A, dtype=torch.float32, device=device))
-        all_feat_tensors.append(X.clone().to(device))
+            if edge_indices:
+                indices_tensor = torch.tensor(edge_indices, dtype=torch.long).T  # shape (2, N)
+                values_tensor = torch.tensor(edge_values, dtype=torch.float32)
 
-        # Define means and ranges for each community and cycle
+                A_t = torch.sparse_coo_tensor(indices_tensor, values_tensor, size=(nNodes, nNodes))
+            else:
+                # No edges this time step
+                A_t = torch.sparse_coo_tensor(
+                    torch.empty((2, 0), dtype=torch.long),
+                    torch.empty((0,), dtype=torch.float16),
+                    size=(nNodes, nNodes)
+                )
+            print(f'num of A_t slice, {t}')
 
-        # means, ranges = generate_means_ranges(num_comm, num_cycle=2)
-        # means, ranges = generate_means_ranges2(feat_means, feat_ranges, num_comm, num_cycle=2)
-        #
-        # print("Means:\n", means)
-        # print("Ranges:\n", ranges)
-        #
-        # # Initialize X with zeros
-        # X = torch.zeros((nNodes, Time, Features))
-        #
-        # for node in range(nNodes):
-        #     comm = node_communities[node]
-        #     for t in range(Time):
-        #         t_block = t // block_size
-        #         # Repeat only first two cycles if more
-        #         effective_cycle = t_block % 2
-        #
-        #         mean = means[comm, effective_cycle]
-        #         spread = ranges[comm, effective_cycle]
-        #
-        #         # Draw from normal distribution (can be changed to uniform if needed)
-        #         value = np.random.normal(loc=mean, scale=spread)
-        #         X[node, t, 0] = value  # Features assumed to be 1  **** if changes here we need to change the code ****
-        #
-        # all_feat_tensors.append(X.clone())
+            A_slices.append(A_t)
+
+        # A_slices is a list of sparse (nNodes, nNodes) matrices for T time steps
+        all_adj_tensors.append(A_slices)  # Store as list of sparse matrices
+        all_feat_tensors.append(X.clone() if num_samples > 1 else X)
 
 
     # Pack dataset
     dataset = {
-        "adj": all_adj_tensors,  # List of adjacency tensors
-        "feat": all_feat_tensors  # List of feature tensors
+        "adj": all_adj_tensors,  # # List of [T sparse matrices]
+        "feat": all_feat_tensors  #
     }
 
     # Save dataset

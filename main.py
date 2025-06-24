@@ -7,7 +7,7 @@ from train import train_model, evaluate_model
 from train_batch import train_model as train_model_batch
 from train_batch import evaluate_model_single, evaluate_model_list
 from visulisation import plot_training_curves
-from parafac_fun import parafac_decomposition_list_dense, parafac_decomposition_list_sparse, parafac_decomposition_dense
+from parafac_fun import parafac_decomposition_list_dense, parafac_decomposition_list_sparse, parafac_decomposition_dense, parafac_decomposition_sparse
 from preparing_data import split_dataset
 import matplotlib.pyplot as plt
 import time
@@ -16,25 +16,26 @@ import numpy as np
 
 # ==== 1. Preparing Dataset Parameters ====
 nNodes = 10000           # Number of nodes in the graph
-Time = 1000             # Number of time steps (snapshots)
+Time = 100             # Number of time steps (snapshots)
 Features = 1          # Feature dimensions per node
 Rank = 10              # Rank of the feature matrix (used if applicable)
 
 # Stochastic graph generation parameters
 num_comm = 2          # Number of communities
 num_cycle = 4         # Number of repeating cycles in graph pattern
-num_samples = 50      # Number of graph sequences to generate
+num_samples = 10      # Number of graph sequences to generate
 
 use_sparse = False        # Whether to use sparse matrix representation
 
 # Neural network architecture placeholder
-layer_dims = [50, 50]      # Example: input layer -> hidden layers -> output
+layer_dims = [200, 100]      # Example: input layer -> hidden layers -> output
 
 gen_new_data = True
 
 # Paths to save generated data
 save_path = f"Generated_Data/{num_samples}_temporal_graph_dataset_{Features}-{nNodes}-{Time}_.pt"
 save_path_abnormal = f"Generated_Data/{num_samples}_temporal_graph_dataset_abnormal_{Features}-{nNodes}-{Time}_.pt"
+save_path_parafac = f"parafac_data/{num_samples}_normal_{Features}-{nNodes}-{Time}_"
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Using device: {device}")
@@ -59,7 +60,7 @@ if gen_new_data:
         node_i=0,              # Watch interactions from node 0
         node_j=2,              # Watch interactions to node 2
         num_snapshots=Time,     # Number of temporal snapshots
-        feat_means= [1.2, 2.5, 3.1, 4.0],   # change from small values to big changes
+        feat_means= [1.2, 3.5, 4.1, 5.5],   # change from small values to big changes
         feat_ranges= [0.2, 0.3, 0.1, 0.4],
         device=device
     )
@@ -72,7 +73,7 @@ if gen_new_data:
 else:
     print(f"Dataset already exists at: {save_path}")
 
-
+input("---")
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Using device: {device}")
@@ -143,21 +144,33 @@ if num_samples > 1:
         print(f"Elapsed time dense parafac_decomposition: {elapsed_time:.4f} seconds")
 
 else:
-    ### ---- for 1 sample ----- #####
-    loaded_data = torch.load(save_path)
-    adj_list_full = loaded_data["adj"]
-    feat_list_full = loaded_data["feat"]
-    input_tensor = feat_list_full[0]
-    adj_tensor_paraf = parafac_decomposition_dense(adj_list_full, Rank)
-    A_true, B_true, C_true = adj_tensor_paraf
-    print(C_true.shape)
+    start_time_parafac_decomposition = time.time()
+   
+    if use_sparse:
 
-    # Define A, B, and C
-    # A_true = torch.randn(nNodes, Rank, dtype=torch.float)
-    # B_true = torch.randn(nNodes, Rank, dtype=torch.float)
-    # C_true = torch.randn(Time, Rank, dtype=torch.float)
-    # input_tensor = torch.randn(nNodes, Time, Features, dtype=torch.float)
+        loaded_data = torch.load(save_path)
+        adj_list_full = loaded_data["adj"]
+        feat_list_full = loaded_data["feat"]
+        input_tensor = feat_list_full[0]
+        adj_tensor_paraf = parafac_decomposition_sparse(adj_list_full, Rank, device='cpu', save_path_prefix=save_path_parafac)
+        A_true, B_true, C_true = adj_tensor_paraf
 
+        end_time_parafac_decomposition = time.time()
+        elapsed_time = end_time_parafac_decomposition - start_time_parafac_decomposition
+        print(f"Elapsed time parse parafac_decomposition : {elapsed_time:.4f} seconds")
+
+
+    else:
+        loaded_data = torch.load(save_path)
+        adj_list_full = loaded_data["adj"]
+        feat_list_full = loaded_data["feat"]
+        input_tensor = feat_list_full[0]
+        adj_tensor_paraf = parafac_decomposition_dense(adj_list_full, Rank, device='cpu', save_path_prefix=save_path_parafac)
+        A_true, B_true, C_true = adj_tensor_paraf
+
+        end_time_parafac_decomposition = time.time()
+        elapsed_time = end_time_parafac_decomposition - start_time_parafac_decomposition
+        print(f"Elapsed time dense parafac_decomposition: {elapsed_time:.4f} seconds")
 
 
 ### ==== 4. train and test the data
