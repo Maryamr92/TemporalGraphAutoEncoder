@@ -1,4 +1,6 @@
-from Data_Generator import generate_temporal_graph_dataset
+
+from Data_Generator import generate_temporal_graph_dataset_dense
+from Data_generator2 import generate_temporal_graph_dataset_new
 from Model import TGCN_Autoencoder
 from model_summary import prepare_wrapped_model, show_model_summary
 import torch
@@ -15,27 +17,27 @@ import os
 import numpy as np
 
 # ==== 1. Preparing Dataset Parameters ====
-nNodes = 10000           # Number of nodes in the graph
-Time = 100             # Number of time steps (snapshots)
+nNodes = 10000          # Number of nodes in the graph
+Time = 1000             # Number of time steps (snapshots)
 Features = 1          # Feature dimensions per node
 Rank = 10              # Rank of the feature matrix (used if applicable)
 
 # Stochastic graph generation parameters
 num_comm = 2          # Number of communities
-num_cycle = 4         # Number of repeating cycles in graph pattern
-num_samples = 10      # Number of graph sequences to generate
-
-use_sparse = False        # Whether to use sparse matrix representation
+num_cycle = 40         # Number of repeating cycles in graph pattern
+num_samples = 1      # Number of graph sequences to generate
 
 # Neural network architecture placeholder
-layer_dims = [200, 100]      # Example: input layer -> hidden layers -> output
+layer_dims = [100]      # Example: input layer -> hidden layers -> output
 
 gen_new_data = True
+use_sparse = True        # Whether to use sparse matrix representation
 
 # Paths to save generated data
-save_path = f"Generated_Data/{num_samples}_temporal_graph_dataset_{Features}-{nNodes}-{Time}_.pt"
-save_path_abnormal = f"Generated_Data/{num_samples}_temporal_graph_dataset_abnormal_{Features}-{nNodes}-{Time}_.pt"
+save_path = f"Generated_Data/{num_samples}_temporal_graph_{Features}-{nNodes}-{Time}_.pkl"
+save_path_abnormal = f"Generated_Data/{num_samples}_temporal_graph_abnormal_{Features}-{nNodes}-{Time}_.pkl"
 save_path_parafac = f"parafac_data/{num_samples}_normal_{Features}-{nNodes}-{Time}_"
+
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Using device: {device}")
@@ -46,15 +48,15 @@ if gen_new_data:
     print(f"Generating new dataset and saving to: {save_path}")
     start_time_generating_Data = time.time()
 
-    dataset = generate_temporal_graph_dataset(
+    dataset = generate_temporal_graph_dataset_new(
         nNodes=nNodes,
         Time=Time,
         Features=Features,
         num_cycle=num_cycle,
         num_comm=num_comm,
         num_samples=num_samples,
-        high_prob=0.2,         # Probability of intra-community edge
-        low_prob=0.03,         # Probability of inter-community edge
+        high_prob=0.05,         # Probability of intra-community edge
+        low_prob=0.003,         # Probability of inter-community edge
         save_path=save_path,   # File path to save the generated dataset
         visualize=False,       # Set True to plot the graph evolution
         node_i=0,              # Watch interactions from node 0
@@ -73,10 +75,9 @@ if gen_new_data:
 else:
     print(f"Dataset already exists at: {save_path}")
 
-input("---")
+print('Generating Data Done')
+input('---')
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"Using device: {device}")
 
 
 #### ==== 2. Making the model
