@@ -4,14 +4,15 @@ import tensorly as tl
 import tensorly.decomposition as decom
 from tensorly.cp_tensor import cp_to_tensor
 # from tensorly.contrib.sparse.decomposition import parafac as sparse_parafac
-# import sparse  # Sparse array library, NOT PyTorch
 # import tensorly.contrib.sparse as stl
 import csv
 from tensorly.contrib.sparse import tensor as stl_tensor
 from tensorly.decomposition import parafac as sparse_parafac
+import sparse         # Sparse array library, NOT PyTorch
 
-# tl.set_backend('numpy')  # Can be changed to 'pytorch' if needed
-tl.set_backend('pytorch')
+
+tl.set_backend('numpy')
+
 
 
 ### === DENSE PARAFAC === ###
@@ -140,7 +141,7 @@ def parafac_decomposition_sparse(adj_tensor, rank, n_iter_max=100, device=None):
 
     return A.to(device), B.to(device), C.to(device), weights_tensor.to(device)
 
-def parafac_decomposition_list_sparse(csv_file, time_start, time_end, nNodes, rank, device=None, save_path=None):
+def parafac_decomposition_list_sparse(tensor_list, rank, device=None, save_path=None):
     """
     Apply sparse PARAFAC decomposition to a list of sparse tensors and save all results together.
 
@@ -154,28 +155,13 @@ def parafac_decomposition_list_sparse(csv_file, time_start, time_end, nNodes, ra
         List of dictionaries with 'A', 'B', 'C', 'weights'.
     """
 
-    # Containers for sparse tensor indices
-    src_list = []
-    dst_list = []
-    time_list = []
-
-    with open(csv_file, 'r') as f:
-        reader = csv.reader(f)
-        for row in reader:
-            src, dst, t = map(int, row)
-            if time_start <= t <= time_end:
-                src_list.append(int(src))
-                dst_list.append(int(dst))
-                time_list.append(int(t))
-
-    Time = time_end - time_start
-
-    # Convert to tensor indices (3 x N)
-    indices = torch.tensor([src_list, dst_list, time_list], dtype=torch.long)
-    values = torch.ones(len(src_list))  # All edge values = 1
-
     # Create sparse tensor
-    sparse_tensor = torch.sparse_coo_tensor(indices, values, size=(nNodes, nNodes, Time))
+    results = []
+    for i, tensor in enumerate(tensor_list):
+        prefix = f"parafac_sample{i}" if save_prefix else None
+        A, B, C, weights = parafac_decomposition_sparse(tensor, rank, device=device, save_path_prefix=prefix)
+        results.append((A, B, C, weights))
+    return results
 
     A, B, C, weights = parafac_decomposition_sparse(sparse_tensor, rank, device=device)
 
@@ -192,6 +178,21 @@ def parafac_decomposition_list_sparse(csv_file, time_start, time_end, nNodes, ra
 
     return results
 
+def load_edges_numpy(csv_path, time_start, time_end, nNodes):
+    data = np.loadtxt(csv_path, delimiter=',', dtype=int)
+    mask = (data[:, 2] >= time_start) & (data[:, 2] < time_end)
+    data = data[mask]
+
+    # Filter by node index range
+    node_mask = (data[:, 0] < nNodes) & (data[:, 1] < nNodes)
+    filtered = data[node_mask]
+
+    src_list = filtered[:, 0].tolist()
+    dst_list = filtered[:, 1].tolist()
+    time_list = (filtered[:, 2] - time_start).tolist()
+
+    return src_list, dst_list, time_list
+
 
 def load_edges_(csv_path, time_start, time_end, nNodes):
     """
@@ -202,24 +203,16 @@ def load_edges_(csv_path, time_start, time_end, nNodes):
         values: list of float (edge weights)
         shape: 3D tensor shape tuple
     """
-    src_list = []
-    dst_list = []
-    time_list = []
+    src_list, dst_list, time_list =  load_edges_numpy(csv_path, time_start, time_end, nNodes)
+    # Stack the coordinate lists into a 2D NumPy array of shape (3, n_nonzero)
+    indices = np.stack([src_list, dst_list, time_list])
+    values = np.ones(len(src_list))  # use np.ones for a proper ndarray
+    shape = (nNodes, nNodes, (time_end - time_start))
 
-    with open(csv_path, 'r') as f:
-        for line in f:
-            src, dst, t = map(int, line.strip().split(','))
-            if time_start <= t <= time_end:
-                src_list.append(src)
-                dst_list.append(dst)
-                time_list.append(t - time_start)  # Normalize time to start at 0
-
-    if not src_list:
-        raise ValueError("No edges found in the given time window.")
-
-    indices = (src_list, dst_list, time_list)
-    values = [1.0] * len(src_list)
-    shape = (nNodes, nNodes, time_end - time_start + 1)
+    print(f"indices shape: {indices.shape}, values shape: {values.shape}, shape: {shape}")
+    print(type(indices), indices.shape)
+    print(type(values), values.shape)
+    print(shape)
 
     return indices, values, shape
 
@@ -233,7 +226,13 @@ def run_sparse_parafac(csv_path, time_start, time_end, nNodes, rank=10, n_iter_m
         factors: list of 2D lists (A, B, C)
     """
     indices, values, shape = load_edges_(csv_path, time_start, time_end, nNodes)
-    sparse_tensor = stl_tensor((indices, values), shape)
+
+    print("Max src:", np.max(indices[0]))
+    print("Max dst:", np.max(indices[1]))
+    print("Max time:", np.max(indices[2]))
+
+    sparse_tensor = sparse.COO(coords=indices, data=values, shape=shape)
+
     weights, factors = sparse_parafac(
         sparse_tensor,
         rank=rank,
@@ -242,20 +241,24 @@ def run_sparse_parafac(csv_path, time_start, time_end, nNodes, rank=10, n_iter_m
         init='random'
     )
 
-    sorted_idx = sorted(range(len(weights)), key=lambda i: -weights[i])
-    sorted_weights = [weights[i] for i in sorted_idx]
+    print(f"weights, {weights.shape}, factors, {factors}")
 
-    sorted_factors = []
-    for factor in factors:
-        # Transpose, reorder columns, then transpose back
-        factor_T = list(zip(*factor))
-        sorted_T = [factor_T[i] for i in sorted_idx]
-        sorted_matrix = list(zip(*sorted_T))
-        sorted_factors.append([list(row) for row in sorted_matrix])
+    # Sort weights in descending order
+    weights = np.array(weights)
+    sorted_idx = np.argsort(-weights)  # Indices that would sort weights descending
 
-    # # Convert to PyTorch tensors
-    # A, B, C = [torch.tensor(f, dtype=torch.float32) for f in sorted_factors]
-    # weights_tensor = torch.tensor(sorted_weights, dtype=torch.float32)
+    # Apply the same order to factors
+    sorted_weights = weights[sorted_idx]
+    sorted_factors = [f[:, sorted_idx] for f in factors]
+
+    # Convert each factor matrix from numpy to torch tensor
+    torch_factors = [torch.tensor(factor, dtype=torch.float32) for factor in sorted_factors]
+
+    # Save tensors (example: save as a dictionary)
+    torch.save({
+        'weights': torch.tensor(sorted_weights, dtype=torch.float32),
+        'factors': torch_factors
+    }, 'model_factors.pt')
 
     print(f'Done !! with tensor shape : {shape}')
 

@@ -59,7 +59,8 @@ if gen_new_data:
         num_samples=num_samples,
         high_prob=0.05,         # Probability of intra-community edge
         low_prob=0.003,         # Probability of inter-community edge
-        save_path=save_path_features,   # File path to save the generated dataset
+        save_path_features=save_path_features,   # File path to save the generated dataset
+        save_path_edges=save_path_edges,   # File path to save the generated dataset
         visualize=False,       # Set True to plot the graph evolution
         node_i=0,              # Watch interactions from node 0
         node_j=2,              # Watch interactions to node 2
@@ -106,13 +107,18 @@ show_model_summary(wrapped_model, nNodes=nNodes, Time=Time, Features=Features, d
 
 #### ==== 3. preparing the parafac decomposition matrices
 
+start_time_training = time.time()
+
 csv_path = 'Generated_Data_new/1_temporal_graph_1-10000-1000_.csv'
 time_start = 0
 time_end = 100
 sorted_weights, sorted_factors = run_sparse_parafac(
-    csv_path, time_start, time_end, nNodes, rank=2, n_iter_max=100)
+    csv_path, time_start, time_end, nNodes, rank=10, n_iter_max=100)
 
+end_time_training = time.time()
+elapsed_time = end_time_training - start_time_training
 
+print(f"Elapsed time training: {elapsed_time:.4f} seconds")
 
 
 input('---')

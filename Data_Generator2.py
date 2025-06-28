@@ -19,7 +19,8 @@ def generate_temporal_graph_dataset_new(
     num_samples=1,
     high_prob=0.9,
     low_prob=0.1,
-    save_path="temporal_graph_dataset_samples.pt",
+    save_path_features="features.pt",
+    save_path_edges="edges.csv",
     visualize=False,
     node_i=0,
     node_j=1,
@@ -63,58 +64,45 @@ def generate_temporal_graph_dataset_new(
             X[node, t, 0] = torch.normal(mean, spread, size=(1,))
 
 
-    torch.save({'features': X}, save_path)
+    torch.save({'features': X}, save_path_features)
 
-    # all_adj_EdgeSet = []
-    # all_feat_tensors = []
 
-    # idx_split = nNodes // num_comm  # Assuming num_comm is defined
-    #
-    # with open(save_path, mode='w', newline='', encoding='utf-8') as file:
-    #     writer = csv.writer(file)
-    #
-    # for sample_i in range(num_samples):
-    #     row_list, col_list, time_list = [], [], []
-    #     edge_set = []
-    #
-    #     for t in range(Time):
-    #         t_block = t // block_size
-    #         block_is_high = (t_block % 2 == 0)
-    #
-    #         intra_prob = high_prob if block_is_high else low_prob
-    #         inter_prob = low_prob / 10
-    #
-    #         num_edges_comm = int(intra_prob * (idx_split ** 2)) // 2
-    #         num_edges_comm12 = int(inter_prob * (idx_split ** 2)) // 2
-    #
-    #         # Community 1 edges
-    #         edges1 = sample_unique_edges(num_edges_comm, (0, idx_split), (0, idx_split), t, self_loop='False')
-    #         # Community 2 edges
-    #         edges2 = sample_unique_edges(num_edges_comm, (idx_split, nNodes), (idx_split, nNodes), t, self_loop='False')
-    #         # Inter-community edges
-    #         edges3 = sample_unique_edges(num_edges_comm12, (0, idx_split), (idx_split, nNodes), t, self_loop='False')
-    #
-    #         with open(save_path, mode='a', newline='', encoding='utf-8') as file:
-    #             writer = csv.writer(file)
-    #             writer.writerows(list(edges1))
-    #             writer.writerows(list(edges2))
-    #             writer.writerows(list(edges3))
-    #
-    #         print(f"Time {t} processed with {len(edge_set)} unique edges.")
-    #
-    #
-    #     # all_adj_EdgeSet.append(edge_set)
-    #     # all_feat_tensors.append(X.clone)
-    #
-    # # Save all samples in one file
-    # # data = {'edge_list': edge_set, 'features': X}
-    # # with open(save_path, 'wb') as f:
-    # #     pickle.dump(data, f)
+    idx_split = nNodes // num_comm  # Assuming num_comm is defined
+
+    with open(save_path_edges, mode='w', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+
+    for sample_i in range(num_samples):
+
+
+        for t in range(Time):
+            t_block = t // block_size
+            block_is_high = (t_block % 2 == 0)
+
+            intra_prob = high_prob if block_is_high else low_prob
+            inter_prob = low_prob / 10
+
+            num_edges_comm = int(intra_prob * (idx_split ** 2)) // 2
+            num_edges_comm12 = int(inter_prob * (idx_split ** 2)) // 2
+
+            # Community 1 edges
+            edges1 = sample_unique_edges(num_edges_comm, (0, idx_split), (0, idx_split), t, self_loop='False')
+            # Community 2 edges
+            edges2 = sample_unique_edges(num_edges_comm, (idx_split, nNodes), (idx_split, nNodes), t, self_loop='False')
+            # Inter-community edges
+            edges3 = sample_unique_edges(num_edges_comm12, (0, idx_split), (idx_split, nNodes), t, self_loop='False')
+
+            with open(save_path_edges, mode='a', newline='', encoding='utf-8') as file:
+                writer = csv.writer(file)
+                writer.writerows(list(edges1))
+                writer.writerows(list(edges2))
+                writer.writerows(list(edges3))
+
+            print(f"Time {t} processed.")
+
 
     # if visualize:
     #     _visualize_temporal_graph(all_adj_EdgeSet[0], Time, node_i, node_j, num_snapshots)
-
-
 
 def generate_means_ranges(means, ranges, num_comm, num_cycle=2):
     # Ensure the inputs have the correct shape
@@ -133,8 +121,8 @@ def sample_unique_edges(n, node_range_a, node_range_b, t, self_loop='False'):
 
     for i in range(n):
         # Vectorized sampling n edges at once
-        u = random.randint(node_range_a[0], node_range_a[1])
-        v = random.randint(node_range_b[0], node_range_b[1])
+        u = random.randint(node_range_a[0], node_range_a[1]-1)
+        v = random.randint(node_range_b[0], node_range_b[1]-1)
         if self_loop and u==v:
             continue
         else:
