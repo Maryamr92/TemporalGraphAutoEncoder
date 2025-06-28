@@ -1,5 +1,3 @@
-# temporal_graph_generator.py
-
 import torch
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -9,180 +7,93 @@ import numpy as np
 
 from tensorly.contrib.sparse import tensor as sparse_tensor
 
-
-
-def dense_to_sparse_tensor(A):
-    """
-    Convert a dense 3D tensor to sparse COO format (indices, values).
-    """
-    # A = A.numpy()
-    indices = np.array(np.nonzero(A))
-    values = A[indices[0], indices[1], indices[2]]
-    shape = A.shape
-
-    return torch.tensor(indices, dtype=torch.long), torch.tensor(values, dtype=torch.float32), shape
-
-
-
-def generate_temporal_graph_dataset(
-        nNodes=5,
-        Time=10,
-        Features=1,
-        num_cycle=2,
-        num_comm=2,
-        num_samples=1,
-        high_prob=0.9,
-        low_prob=0.1,
-        save_path="temporal_graph_dataset_samples.pt",
-        visualize=False,
-        node_i=0,
-        node_j=1,
-        num_snapshots = 4,
-        feat_means = [1.2, 2.5, 3.1, 4.0],
-        feat_ranges = [0.2, 0.3, 0.1, 0.4]
-
+def generate_temporal_graph_dataset_dense(
+    nNodes=5,
+    Time=10,
+    Features=1,
+    num_cycle=2,
+    num_comm=2,
+    num_samples=1,
+    high_prob=0.9,
+    low_prob=0.1,
+    save_path="temporal_graph_dataset_samples.pt",
+    visualize=False,
+    node_i=0,
+    node_j=1,
+    num_snapshots=4,
+    feat_means=[1.2, 2.5, 3.1, 4.0],
+    feat_ranges=[0.2, 0.3, 0.1, 0.4],
+    device=None
 ):
-    """
-    Generate synthetic temporal graph dataset with node features and save it.
-
-    Args:
-        n (int): Number of nodes.
-        T (int): Number of time steps.
-        F (int): Number of node features.
-        num_blocks (int): Number of distinct time blocks for probability changes.
-        num_comm (int): Number of communities into which nodes are divided.
-        num_samples (int): Number of temporal graph samples to generate.
-        high_prob (float): High intra-group interaction probability.
-        low_prob (float): Low intra-group interaction probability.
-        save_path (str): Path to save the generated dataset.
-        visualize (bool): Whether to visualize the generated graphs and edges.
-        node_i (int): First node to track edge presence (only if visualize=True).
-        node_j (int): Second node to track edge presence (only if visualize=True).
-
-    Returns:
-        dict: Dictionary containing adjacency and feature tensors.
-    """
-
-    # Assert T is divisible by num_blocks
-    assert Time % num_cycle == 0, "T must be evenly divisible by num_blocks"
+    assert Time % num_cycle == 0, "Time must be divisible by num_cycle"
     block_size = Time // num_cycle
 
     # Assign nodes to communities
-    node_communities = np.array([i * num_comm // nNodes for i in range(nNodes)])
+    node_communities = torch.div(torch.arange(nNodes), nNodes // num_comm, rounding_mode='floor')
 
-    P = np.zeros((num_comm, num_comm, num_cycle))
-
-    for a in range(num_comm):
-        for b in range(num_comm):
-            for t_block in range(num_cycle):
-                if a == b:
-                    # Intra-group interaction probabilities
-                    prob = high_prob if t_block % 2 == 0 else low_prob
-                else:
-                    # Inter-group interaction probabilities (lower)
-                    prob = (high_prob / 10) if t_block % 2 == 0 else (low_prob / 10)
-                    # prob = low_prob
-
-                P[a, b, t_block] = prob
-
-    # Initialize storage for all samples
-    all_adj_tensors = []
-    all_feat_tensors = []
-
-    # Generate random node features (shared across samples)
-    # X = torch.randn((nNodes, Time, Features))
+    # Build probability tensor P[a, b, t_block]
+    P = torch.full((num_comm, num_comm, num_cycle), low_prob / 10)
+    for c in range(num_comm):
+        for t_block in range(num_cycle):
+            if t_block % 2 == 0:
+                P[c, c, t_block] = high_prob
+            else:
+                P[c, c, t_block] = low_prob
 
     means, ranges = generate_means_ranges(feat_means, feat_ranges, num_comm, num_cycle=2)
+    means = torch.tensor(means, dtype=torch.float16)
+    ranges = torch.tensor(ranges, dtype=torch.float16)
 
-    print("Means:\n", means)
-    print("Ranges:\n", ranges)
+    # Preallocate feature tensor X: shape (nNodes, Time, Features)
+    X = torch.zeros((nNodes, Time, Features), dtype=torch.float16, device=device)
 
-    # Initialize X with zeros
-    X = torch.zeros((nNodes, Time, Features))
-
+    # Generate features per node over time
     for node in range(nNodes):
         comm = node_communities[node]
         for t in range(Time):
-            t_block = t // block_size
-            # Repeat only first two cycles if more
-            effective_cycle = t_block % 2
+            cycle = (t // block_size) % 2
+            mean = means[comm, cycle]
+            spread = ranges[comm, cycle]
+            X[node, t, 0] = torch.normal(mean, spread, size=(1,))
 
-            mean = means[comm, effective_cycle]
-            spread = ranges[comm, effective_cycle]
+    all_adj_tensors = []
+    all_feat_tensors = []
 
-            # Draw from normal distribution (can be changed to uniform if needed)
-            value = np.random.normal(loc=mean, scale=spread)
-            X[node, t, 0] = value  # Features assumed to be 1  **** if changes here we need to change the code ****
-
-
-
-    ## Generate samples
     for _ in range(num_samples):
-        A = np.zeros((nNodes, nNodes, Time))  # Adjacency tensor (n, n, T)
+        A_slices = []
 
         for t in range(Time):
-            # t = Time // priode #  in baraye dashtane chanta pride zamani hast
             t_block = t // block_size
-            # print(f't_block', {t_block})
+            edge_indices = []
             for i in range(nNodes):
-                for j in range(i +1 , nNodes):  # Only upper triangle needed (symmetry)
-                    # group_i = 0 if i < split_idx else 1
-                    # group_j = 0 if j < split_idx else 1
-                    # if np.random.rand() <= P[group_i, group_j, t_block]:
-                    #     A[i, j, t] = A[j, i, t] = 1  # Symmetric graph
-                    group_i = node_communities[i]
-                    group_j = node_communities[j]
-                    prob = P[group_i, group_j, t_block]
-                    if np.random.rand() <= prob:
-                        A[i, j, t] = A[j, i, t] = 1  # Symmetric graph
+                for j in range(i + 1, nNodes):
+                    gi, gj = node_communities[i], node_communities[j]
+                    prob = P[gi, gj, t_block]
+                    if torch.rand(1).item() < prob:
+                        edge_indices.extend([[i, j], [j, i]])
 
-        # Store tensors
-        all_adj_tensors.append(torch.tensor(A, dtype=torch.float32))
-        all_feat_tensors.append(X.clone())
+            if edge_indices:
+                edge_indices = torch.tensor(edge_indices, dtype=torch.long).T
+                edge_values = torch.ones(edge_indices.shape[1], dtype=torch.float16)
+            else:
+                edge_indices = torch.empty((2, 0), dtype=torch.long)
+                edge_values = torch.empty((0,), dtype=torch.float16)
 
-        # Define means and ranges for each community and cycle
+            A_t = torch.sparse_coo_tensor(edge_indices, edge_values, size=(nNodes, nNodes))
+            A_slices.append(A_t)
 
-        # means, ranges = generate_means_ranges(num_comm, num_cycle=2)
-        # means, ranges = generate_means_ranges2(feat_means, feat_ranges, num_comm, num_cycle=2)
-        #
-        # print("Means:\n", means)
-        # print("Ranges:\n", ranges)
-        #
-        # # Initialize X with zeros
-        # X = torch.zeros((nNodes, Time, Features))
-        #
-        # for node in range(nNodes):
-        #     comm = node_communities[node]
-        #     for t in range(Time):
-        #         t_block = t // block_size
-        #         # Repeat only first two cycles if more
-        #         effective_cycle = t_block % 2
-        #
-        #         mean = means[comm, effective_cycle]
-        #         spread = ranges[comm, effective_cycle]
-        #
-        #         # Draw from normal distribution (can be changed to uniform if needed)
-        #         value = np.random.normal(loc=mean, scale=spread)
-        #         X[node, t, 0] = value  # Features assumed to be 1  **** if changes here we need to change the code ****
-        #
-        # all_feat_tensors.append(X.clone())
+        all_adj_tensors.append(A_slices)
+        all_feat_tensors.append(X.clone() if num_samples > 1 else X)
 
+    torch.save({
+        "adj": all_adj_tensors,
+        "feat": all_feat_tensors
+    }, save_path)
 
-    # Pack dataset
-    dataset = {
-        "adj": all_adj_tensors,  # List of adjacency tensors
-        "feat": all_feat_tensors  # List of feature tensors
-    }
+    if visualize:
+        _visualize_temporal_graph_dense(all_adj_tensors[0], Time, node_i, node_j, num_snapshots)
 
-    # Save dataset
-    torch.save(dataset, save_path)
-
-    # Optionally visualize
-    if visualize and num_samples > 0:
-        _visualize_temporal_graph(all_adj_tensors[0], Time, node_i, node_j, num_snapshots)
-
-    return dataset
-
+    return {"adj": all_adj_tensors, "feat": all_feat_tensors}
 
 def generate_means_ranges(means, ranges, num_comm, num_cycle=2):
     # Ensure the inputs have the correct shape
@@ -195,7 +106,7 @@ def generate_means_ranges(means, ranges, num_comm, num_cycle=2):
     return community_cycle_means, community_cycle_ranges
 
 
-def _visualize_temporal_graph(A_tensor, Time, node_i, node_j, num_snapshots):
+def _visualize_temporal_graph_dense(A_tensor, Time, node_i, node_j, num_snapshots):
     """
     Visualize specific time points of a temporal adjacency tensor and edge time series.
 

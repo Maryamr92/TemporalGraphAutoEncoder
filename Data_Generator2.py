@@ -6,6 +6,7 @@ from itertools import product
 import numpy as np
 import random
 import pickle
+import csv
 from tensorly.contrib.sparse import tensor as sparse_tensor
 
 
@@ -62,52 +63,56 @@ def generate_temporal_graph_dataset_new(
             X[node, t, 0] = torch.normal(mean, spread, size=(1,))
 
 
-    all_adj_EdgeSet = []
-    all_feat_tensors = []
+    torch.save({'features': X}, save_path)
 
-    idx_split = nNodes // num_comm  # Assuming num_comm is defined
+    # all_adj_EdgeSet = []
+    # all_feat_tensors = []
 
-    for sample_i in range(num_samples):
-        row_list, col_list, time_list = [], [], []
-        edge_set = set()
+    # idx_split = nNodes // num_comm  # Assuming num_comm is defined
+    #
+    # with open(save_path, mode='w', newline='', encoding='utf-8') as file:
+    #     writer = csv.writer(file)
+    #
+    # for sample_i in range(num_samples):
+    #     row_list, col_list, time_list = [], [], []
+    #     edge_set = []
+    #
+    #     for t in range(Time):
+    #         t_block = t // block_size
+    #         block_is_high = (t_block % 2 == 0)
+    #
+    #         intra_prob = high_prob if block_is_high else low_prob
+    #         inter_prob = low_prob / 10
+    #
+    #         num_edges_comm = int(intra_prob * (idx_split ** 2)) // 2
+    #         num_edges_comm12 = int(inter_prob * (idx_split ** 2)) // 2
+    #
+    #         # Community 1 edges
+    #         edges1 = sample_unique_edges(num_edges_comm, (0, idx_split), (0, idx_split), t, self_loop='False')
+    #         # Community 2 edges
+    #         edges2 = sample_unique_edges(num_edges_comm, (idx_split, nNodes), (idx_split, nNodes), t, self_loop='False')
+    #         # Inter-community edges
+    #         edges3 = sample_unique_edges(num_edges_comm12, (0, idx_split), (idx_split, nNodes), t, self_loop='False')
+    #
+    #         with open(save_path, mode='a', newline='', encoding='utf-8') as file:
+    #             writer = csv.writer(file)
+    #             writer.writerows(list(edges1))
+    #             writer.writerows(list(edges2))
+    #             writer.writerows(list(edges3))
+    #
+    #         print(f"Time {t} processed with {len(edge_set)} unique edges.")
+    #
+    #
+    #     # all_adj_EdgeSet.append(edge_set)
+    #     # all_feat_tensors.append(X.clone)
+    #
+    # # Save all samples in one file
+    # # data = {'edge_list': edge_set, 'features': X}
+    # # with open(save_path, 'wb') as f:
+    # #     pickle.dump(data, f)
 
-        for t in range(Time):
-            t_block = t // block_size
-            block_is_high = (t_block % 2 == 0)
-
-            intra_prob = high_prob if block_is_high else low_prob
-            inter_prob = low_prob / 10
-
-            num_edges_comm = int(intra_prob * (idx_split ** 2)) // 2
-            num_edges_comm12 = int(inter_prob * (idx_split ** 2)) // 2
-
-            # Community 1 edges
-            edges1 = sample_unique_edges(num_edges_comm, (0, idx_split), (0, idx_split), t)
-            # Community 2 edges
-            edges2 = sample_unique_edges(num_edges_comm, (idx_split, nNodes), (idx_split, nNodes), t)
-            # Inter-community edges
-            edges3 = sample_unique_edges(num_edges_comm12, (0, idx_split), (idx_split, nNodes), t, allow_self_loop=True)
-
-            # Tag edges with time
-            edge_set.update(edges1)
-            edge_set.update(edges2)
-            edge_set.update(edges3)
-
-            print(f"Time {t} processed with {len(edge_set)} unique edges.")
-
-
-        all_adj_EdgeSet.append(edge_set)
-        all_feat_tensors.append(X.clone)
-
-        print(f"Sample {sample_i + 1} is done!")
-
-    # Save all samples in one file
-    data = {'tuple_set': all_adj_EdgeSet, 'tensor': all_feat_tensors}
-    with open(save_path, 'wb') as f:
-        pickle.dump(data, f)
-
-    if visualize:
-        _visualize_temporal_graph(all_adj_EdgeSet[0], Time, node_i, node_j, num_snapshots)
+    # if visualize:
+    #     _visualize_temporal_graph(all_adj_EdgeSet[0], Time, node_i, node_j, num_snapshots)
 
 
 
@@ -121,19 +126,23 @@ def generate_means_ranges(means, ranges, num_comm, num_cycle=2):
 
     return community_cycle_means, community_cycle_ranges
 
-def sample_unique_edges(n, node_range_a, node_range_b, t, allow_self_loop=False):
+def sample_unique_edges(n, node_range_a, node_range_b, t, self_loop='False'):
     edges = set()
     # attempts = 0
     # max_attempts = n * 5 and attempts < max_attempts
 
-    while len(edges) < n:
+    for i in range(n):
         # Vectorized sampling n edges at once
-        u = np.random.randint(node_range_a[0], node_range_a[1], size=n)
-        v = np.random.randint(node_range_b[0], node_range_b[1], size=n)
-        for a, b in zip(u, v):
-            if not allow_self_loop and a == b:
-                continue
-            edges.add((min(a, b), max(a, b), t))
+        u = random.randint(node_range_a[0], node_range_a[1])
+        v = random.randint(node_range_b[0], node_range_b[1])
+        if self_loop and u==v:
+            continue
+        else:
+            u = str(u)
+            v = str(v)
+            t = str(t)
+            edges.add((u, v, t))
+            edges.add((v, u, t))
         # attempts += 1
 
     # if len(edges) < n:

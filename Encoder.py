@@ -4,7 +4,7 @@ import torch.nn as nn
 
 # -------------------- Encoder Layer (TEncoder) --------------------
 class TEncoder(nn.Module):
-    def __init__(self, M_in, M_out, nNodes, Time, Rank):
+    def __init__(self, M_in, M_out, nNodes, Time, Rank, device=None):
         super(TEncoder, self).__init__()
         self.m1_in, self.m2_in, self.m3_in = M_in
         self.m1_out, self.m2_out, self.m3_out = M_out
@@ -12,16 +12,17 @@ class TEncoder(nn.Module):
         self.rank = Rank
         self.Time = Time
         # self.dropout = dropout
+        self.device = device if device else torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # Learnable projection matrices
-        self.W1 = nn.Parameter(torch.randn(self.m1_out, self.m1_in))
-        self.V1 = nn.Parameter(torch.randn(self.m2_in, self.nodes))
+        self.W1 = nn.Parameter(torch.randn(self.m1_out, self.m1_in, device=self.device))
+        self.V1 = nn.Parameter(torch.randn(self.m2_in, self.nodes, device=self.device))
 
-        self.W2 = nn.Parameter(torch.randn(self.m2_out, self.m1_in))
-        self.V2 = nn.Parameter(torch.randn(self.m2_in, self.nodes))
+        self.W2 = nn.Parameter(torch.randn(self.m2_out, self.m1_in, device=self.device))
+        self.V2 = nn.Parameter(torch.randn(self.m2_in, self.nodes, device=self.device))
 
-        self.W3 = nn.Parameter(torch.randn(self.m3_out, self.m1_in))
-        self.V3 = nn.Parameter(torch.randn(self.m2_in, self.Time))
+        self.W3 = nn.Parameter(torch.randn(self.m3_out, self.m1_in, device=self.device))
+        self.V3 = nn.Parameter(torch.randn(self.m2_in, self.Time, device=self.device))
 
         # self.b3 = nn.Parameter(torch.randn(self.m3_out, self.Time))
 

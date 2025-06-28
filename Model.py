@@ -1,4 +1,3 @@
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -10,8 +9,9 @@ from Data_Generator import split_sum_into_3d
 # -------------------- Full TGCN Model (Encoder + Decoder) --------------------
 class TGCN_Autoencoder(nn.Module):
 
+    def __init__(self, input_X, layer_dims, nNodes, Time, Rank, dropout=0.0, device=None):
 
-    def __init__(self, input_X, layer_dims, nNodes, Time, Rank, dropout=0.0):
+        self.device = device if device else torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # Convert layer_dims integers into 3D tuples for all layers
         layer_dims_3d = [split_sum_into_3d(dim) for dim in layer_dims]
@@ -22,8 +22,6 @@ class TGCN_Autoencoder(nn.Module):
         self.dropout = dropout
         self.n_layers = len(layer_dims)  # Number of Encoder layers
 
-
-
         # Build Encoder layers dynamically
         for i in range(self.n_layers):
             self.layers.append(
@@ -32,7 +30,8 @@ class TGCN_Autoencoder(nn.Module):
                     M_out=layer_dims_3d[i],
                     nNodes=nNodes,
                     Time=Time,
-                    Rank=Rank
+                    Rank=Rank,
+                    device=self.device
                 )
             )
         # print(f"input_X, {input_X[2]}")
@@ -42,7 +41,8 @@ class TGCN_Autoencoder(nn.Module):
             input_shape=(layer_dims[-1], Rank, input_X[2]),
             nNodes=nNodes,
             Time=Time,
-            Rank=Rank)
+            Rank=Rank,
+            device=self.device)
 
     def reset(self):
         for layer in self.layers:
@@ -57,7 +57,7 @@ class TGCN_Autoencoder(nn.Module):
         # Pass through all encoder layers
         for idx, layer in enumerate(self.layers):
             x = layer(x, A, B, C, Rank)
-            if idx != self.n_layers - 1:                # last layer no relu
+            if idx != self.n_layers - 1:  # last layer no relu
                 x = F.relu(x)
             if self.dropout > 0:
                 x = F.dropout(x, p=self.dropout, training=self.training)

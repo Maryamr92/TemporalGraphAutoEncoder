@@ -5,21 +5,23 @@ import torch.optim as optim
 
 # -------------------- Decoder Layer --------------------
 class TDecoder(nn.Module):
-    def __init__(self, input_shape, nNodes, Time, Rank):
+    def __init__(self, input_shape, nNodes, Time, Rank, device=None):
         super(TDecoder, self).__init__()
         self.m1, self.m2, self.m3 = input_shape
         self.rank = Rank
         self.nodes = nNodes
         self.Time = Time
 
-        self.theta1 = nn.Parameter(torch.randn(self.rank, self.m1))
-        self.alpha1 = nn.Parameter(torch.randn(self.m2, self.nodes))
+        self.device = device if device else torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.theta2 = nn.Parameter(torch.randn(self.rank, self.m1))
-        self.alpha2 = nn.Parameter(torch.randn(self.m2, self.nodes))
+        self.theta1 = nn.Parameter(torch.randn(self.rank, self.m1, device=self.device))
+        self.alpha1 = nn.Parameter(torch.randn(self.m2, self.nodes, device=self.device))
 
-        self.theta3 = nn.Parameter(torch.randn(self.rank, self.m1))
-        self.alpha3 = nn.Parameter(torch.randn(self.m2, self.Time))
+        self.theta2 = nn.Parameter(torch.randn(self.rank, self.m1, device=self.device))
+        self.alpha2 = nn.Parameter(torch.randn(self.m2, self.nodes, device=self.device))
+
+        self.theta3 = nn.Parameter(torch.randn(self.rank, self.m1, device=self.device))
+        self.alpha3 = nn.Parameter(torch.randn(self.m2, self.Time, device=self.device))
 
         self.reset_parameters()
 
