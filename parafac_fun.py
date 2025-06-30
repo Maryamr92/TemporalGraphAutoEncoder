@@ -9,7 +9,7 @@ import csv
 from tensorly.contrib.sparse import tensor as stl_tensor
 from tensorly.decomposition import parafac as sparse_parafac
 import sparse         # Sparse array library, NOT PyTorch
-
+import pickle
 
 tl.set_backend('numpy')
 
@@ -217,7 +217,7 @@ def load_edges_(csv_path, time_start, time_end, nNodes):
     return indices, values, shape
 
 
-def run_sparse_parafac(csv_path, time_start, time_end, nNodes, rank=10, n_iter_max=100):
+def run_sparse_parafac(csv_path, time_start, time_end, nNodes, rank=10, n_iter_max=20):
     """
     Run sparse PARAFAC on a 3D sparse tensor using only Python (via TensorLy).
 
@@ -251,14 +251,18 @@ def run_sparse_parafac(csv_path, time_start, time_end, nNodes, rank=10, n_iter_m
     sorted_weights = weights[sorted_idx]
     sorted_factors = [f[:, sorted_idx] for f in factors]
 
-    # Convert each factor matrix from numpy to torch tensor
-    torch_factors = [torch.tensor(factor, dtype=torch.float32) for factor in sorted_factors]
+    # Save as np array
+    with open('factors-200-300.pkl', 'wb') as f:
+        pickle.dump({'factors': sorted_factors, 'weights': sorted_weights}, f)
 
-    # Save tensors (example: save as a dictionary)
-    torch.save({
-        'weights': torch.tensor(sorted_weights, dtype=torch.float32),
-        'factors': torch_factors
-    }, 'model_factors.pt')
+    # # Convert each factor matrix from numpy to torch tensor
+    # torch_factors = [torch.tensor(factor, dtype=torch.float32) for factor in sorted_factors]
+    #
+    # # Save tensors (example: save as a dictionary)
+    # torch.save({
+    #     'weights': torch.tensor(sorted_weights, dtype=torch.float32),
+    #     'factors': torch_factors
+    # }, 'model_factors.pt')
 
     print(f'Done !! with tensor shape : {shape}')
 

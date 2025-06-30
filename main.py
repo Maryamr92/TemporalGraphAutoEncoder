@@ -110,10 +110,10 @@ show_model_summary(wrapped_model, nNodes=nNodes, Time=Time, Features=Features, d
 start_time_training = time.time()
 
 csv_path = 'Generated_Data_new/1_temporal_graph_1-10000-1000_.csv'
-time_start = 0
-time_end = 100
+time_start = 200
+time_end = 300
 sorted_weights, sorted_factors = run_sparse_parafac(
-    csv_path, time_start, time_end, nNodes, rank=10, n_iter_max=100)
+    csv_path, time_start, time_end, nNodes, rank=10, n_iter_max=20)
 
 end_time_training = time.time()
 elapsed_time = end_time_training - start_time_training
