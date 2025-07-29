@@ -257,3 +257,72 @@
 # plt.tight_layout()
 # plt.savefig("Final_Test_Loss_mal_vs_bon.png", dpi=300)
 # plt.show()
+
+
+# if num_samples > 1:
+#
+#     # # Load your saved tensors
+#     loaded_data = torch.load(save_path)
+#     adj_list_full = loaded_data["adj"]
+#     feat_list_full = loaded_data["feat"]
+#
+#
+#     adj_list_train, feat_list_train, adj_list_val, feat_list_val = split_dataset(
+#         adj_list_full, feat_list_full, train_ratio=0.8, seed=42)
+#
+#     # Apply decomposition based on the mode
+#     if use_sparse:
+#
+#         adj_list_train = parafac_decomposition_list_sparse(adj_list_train, Rank, device='cpu', save_path_prefix=save_path_parafac)
+#         adj_list_val = parafac_decomposition_list_sparse(adj_list_val, Rank, device='cpu', save_path_prefix=save_path_parafac)
+#
+#         end_time_parafac_decomposition = time.time()
+#         elapsed_time = end_time_parafac_decomposition - start_time_parafac_decomposition
+#
+#         print(f"Elapsed time parse parafac_decomposition : {elapsed_time:.4f} seconds")
+#
+#     else:
+#
+#         adj_list_train = parafac_decomposition_list_dense(adj_list_train, Rank, device=device, save_path_prefix=save_path_parafac)
+#         adj_list_val = parafac_decomposition_list_dense(adj_list_val, Rank, device=device, save_path_prefix=save_path_parafac)
+#
+#         end_time_parafac_decomposition = time.time()
+#         elapsed_time = end_time_parafac_decomposition - start_time_parafac_decomposition
+#
+#         print(f"Elapsed time dense parafac_decomposition: {elapsed_time:.4f} seconds")
+#
+# else:          ### ---- for 1 sample ----- #####
+#
+#     data = torch.load("Generated_Data/1_temporal_graph_dataset_1-10000-1000_.pt")
+#     print(data.keys())
+#     if use_sparse:
+#
+#         loaded_data = torch.load(save_path)
+#         adj_list_full = loaded_data["adj"]
+#         feat_list_full = loaded_data["feat"]
+#         input_tensor = feat_list_full[0]
+#         adj_tensor_paraf = parafac_decomposition_sparse(adj_list_full, Rank, device='cpu', save_path_prefix=save_path_parafac)
+#         A_true, B_true, C_true = adj_tensor_paraf
+#
+#         end_time_parafac_decomposition = time.time()
+#         elapsed_time = end_time_parafac_decomposition - start_time_parafac_decomposition
+#         print(f"Elapsed time parse parafac_decomposition : {elapsed_time:.4f} seconds")
+#
+#
+#     else:
+#         loaded_data = torch.load(save_path)
+#         adj_list_full = loaded_data["adj"]
+#         feat_list_full = loaded_data["feat"]
+#         input_tensor = feat_list_full[0]
+#         adj_tensor_paraf = parafac_decomposition_dense(adj_list_full, Rank, device='cpu', save_path_prefix=save_path_parafac)
+#         A_true, B_true, C_true = adj_tensor_paraf
+#
+#         end_time_parafac_decomposition = time.time()
+#         elapsed_time = end_time_parafac_decomposition - start_time_parafac_decomposition
+#         print(f"Elapsed time dense parafac_decomposition: {elapsed_time:.4f} seconds")
+
+    # Define A, B, and C
+    # A_true = torch.randn(nNodes, Rank, dtype=torch.float)
+    # B_true = torch.randn(nNodes, Rank, dtype=torch.float)
+    # C_true = torch.randn(Time, Rank, dtype=torch.float)
+    # input_tensor = torch.randn(nNodes, Time, Features, dtype=torch.float)
