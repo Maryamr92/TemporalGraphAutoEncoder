@@ -17,14 +17,15 @@ class TEncoder(nn.Module):
         # Learnable projection matrices
         self.W1 = nn.Parameter(torch.randn(self.m1_out, self.m1_in, device=self.device))
         self.V1 = nn.Parameter(torch.randn(self.m2_in, self.nodes, device=self.device))
+        self.b1 = nn.Parameter(torch.randn(self.m1_out, self.rank))
 
         self.W2 = nn.Parameter(torch.randn(self.m2_out, self.m1_in, device=self.device))
         self.V2 = nn.Parameter(torch.randn(self.m2_in, self.nodes, device=self.device))
+        self.b2 = nn.Parameter(torch.randn(self.m2_out, self.rank))
 
         self.W3 = nn.Parameter(torch.randn(self.m3_out, self.m1_in, device=self.device))
         self.V3 = nn.Parameter(torch.randn(self.m2_in, self.Time, device=self.device))
-
-        # self.b3 = nn.Parameter(torch.randn(self.m3_out, self.Time))
+        self.b3 = nn.Parameter(torch.randn(self.m3_out, self.rank))
 
         self.reset_parameters()
 
@@ -65,25 +66,26 @@ class TEncoder(nn.Module):
             P2 = P2 @ self.V2  # (m2_out, nodes)
             P3 = P3 @ self.V3  # (m3_out, Time)
 
-            # print(f"P1, {P1.shape}")
-
+            # P1 = P1 + self.b1  # (m1_out, nodes)
+            # P2 = P2 + self.b2  # (m2_out, nodes)
+            # P3 = P3 + self.b3  # (m3_out, Time)
 
             P1_list = []
             P2_list = []
             P3_list = []
 
             for r in range(Rank):
-                part1 = P1 @ A[:, r].unsqueeze(1)  # (m1_out, 1)     ()
-                part2 = P2 @ B[:, r].unsqueeze(1)  # (m2_out, 1)
-                part3 = P3 @ C[:, r].unsqueeze(1)  # (m3_out, 1)
+                part1 = P1 @ A[:, r].unsqueeze(1)   # (m1_out, 1)
+                part2 = P2 @ B[:, r].unsqueeze(1)   # (m2_out, 1)
+                part3 = P3 @ C[:, r].unsqueeze(1)   # (m3_out, 1)
 
                 P1_list.append(part1)
                 P2_list.append(part2)
                 P3_list.append(part3)
 
-            PA = torch.cat(P1_list, dim=1)  # (m1_out, Rank)
-            PB = torch.cat(P2_list, dim=1)  # (m2_out, Rank)
-            PC = torch.cat(P3_list, dim=1)  # (m3_out, Rank)
+            PA = torch.cat(P1_list, dim=1) + self.b1  # (m1_out, Rank)
+            PB = torch.cat(P2_list, dim=1) + self.b2  # (m2_out, Rank)
+            PC = torch.cat(P3_list, dim=1) + self.b3  # (m3_out, Rank)
 
             PA_list.append(PA.unsqueeze(2))  # Add a new dimension for stacking
             PB_list.append(PB.unsqueeze(2))  # Add a new dimension for stacking
